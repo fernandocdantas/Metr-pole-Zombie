@@ -4,18 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Project Zomboid managed dedicated server for the Georgian gaming community. Dockerized PZ game server with a Laravel REST API for remote management (RCON bridge, config editing, mod management, player admin). Web dashboard via Blade + Livewire in the same app. Free-to-play launch with monetization architecture built in for later stages.
+Project Zomboid managed dedicated server for the Georgian gaming community. Dockerized PZ game server with a Laravel REST API for remote management (RCON bridge, config editing, mod management, player admin). Web dashboard via React + Inertia.js + shadcn/ui in the same app. Free-to-play launch with monetization architecture built in for later stages.
 
 ## Tech Stack
 
 - **Framework:** Laravel 12 (PHP 8.3)
+- **Frontend:** React 19 + Inertia.js v2 + TypeScript + Tailwind CSS v4 + shadcn/ui
 - **Database:** PostgreSQL 16, Eloquent ORM, Laravel migrations
 - **RCON:** Custom PHP Source RCON client (TCP socket, `ext-sockets`)
 - **Queue/Cache:** Redis, Laravel Queue, Laravel Scheduler
 - **Docker Control:** Docker Engine API via HTTP to Unix socket
-- **Testing:** Pest PHP
-- **API Docs:** Scribe (auto-generated from routes + Form Requests)
-- **Web UI (Stage 3):** Blade + Livewire 3 + Tailwind CSS
+- **Auth:** Fortify (web), API key middleware (API), Sanctum (tokens)
+- **Testing:** Pest PHP 3
+- **Routing:** Wayfinder (TypeScript route generation)
 - **Payments (Stage 4):** Laravel Cashier (Stripe)
 - **Containers:** Docker Compose v2
 
@@ -69,7 +70,7 @@ The Laravel app is the single control plane wrapping three integration points:
 - Every admin API action writes to the `audit_logs` table via `AuditLogger` service
 - Mod management must keep `WorkshopItems=` and `Mods=` lines in sync (paired entries, semicolon-separated)
 - PZ whitelist lives in a SQLite file (`serverPZ.db`), not PostgreSQL — API reads/writes it directly via separate DB connection
-- Auth: API key in `X-API-Key` header for Stages 1-2. Sanctum session/token auth added in Stage 3+.
+- Auth: API key in `X-API-Key` header for API endpoints. Fortify session auth for web dashboard. Sanctum for API tokens.
 
 ## Implementation Phases
 
@@ -77,4 +78,4 @@ Detailed plan with acceptance criteria in `IMPLEMENTATION_PLAN.md`. Status track
 
 **Stage 1 (MVP) — Phases 1–8:** Docker infra, Laravel + RCON, audit DB, server/config/player/mod API endpoints, Pest tests
 **Stage 2 — Phases 9–12:** Backup/rollback (Laravel Queue + Scheduler), whitelist CRUD, schema expansion
-**Stage 3+ — Phases 13+:** Blade/Livewire web dashboard, Cashier subscriptions, item shop
+**Stage 3+ — Phases 13+:** React/Inertia web dashboard, Cashier subscriptions, item shop

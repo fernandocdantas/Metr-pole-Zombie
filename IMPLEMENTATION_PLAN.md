@@ -18,8 +18,11 @@
 | Game Server Image | **Renegade-Master/zomboid-dedicated-server** | Well-maintained, env var config, beta branch support, active community |
 | Web Server | **Nginx + PHP-FPM** (in container) or **FrankenPHP** | Standard Laravel deployment. Caddy as reverse proxy in front |
 | Reverse Proxy | **Caddy** | Auto TLS, zero-config HTTPS |
-| Frontend | **Blade + Livewire 3** (Stage 3) | Server-rendered, no separate SPA build step. Real-time updates via Livewire |
-| API Docs | **Scribe** | Auto-generates OpenAPI/Swagger from Laravel routes and Form Requests |
+| Frontend | **React 19 + Inertia.js v2 + TypeScript** | Client-side SPA with server-side routing via Inertia. No separate API for frontend |
+| UI Components | **shadcn/ui + Tailwind CSS v4** | Accessible, composable components. Dark mode, responsive out of the box |
+| Route Generation | **Wayfinder** | TypeScript route generation from Laravel routes. Type-safe frontend routing |
+| Web Auth | **Fortify** | Session-based auth with 2FA support. Login, register, password reset, email verification |
+| API Auth | **Sanctum** | API token auth for external API consumers |
 | Testing | **Pest PHP** | Modern, expressive testing. Built on PHPUnit. Laravel integration out of the box |
 | Containerization | **Docker Compose v2** | Single-file orchestration as required |
 | Docker Control | **Docker Engine API via HTTP** | Call Docker socket (`/var/run/docker.sock`) directly with Laravel HTTP client. No SDK needed |
@@ -44,8 +47,9 @@ Zomboid/
 │   │   ├── zomboid.php               # PZ-specific config (paths, RCON, server name)
 │   │   └── ...
 │   ├── routes/
-│   │   ├── api.php                   # All REST API routes
-│   │   └── web.php                   # Web dashboard routes (Stage 3)
+│   │   ├── api.php                   # REST API routes
+│   │   ├── web.php                   # Web dashboard routes (Inertia)
+│   │   └── settings.php              # Settings routes
 │   ├── app/
 │   │   ├── Models/
 │   │   │   └── AuditLog.php
@@ -56,7 +60,7 @@ Zomboid/
 │   │   │   │   │   ├── ConfigController.php
 │   │   │   │   │   ├── PlayerController.php
 │   │   │   │   │   └── ModController.php
-│   │   │   │   └── Web/              # Stage 3 web controllers
+│   │   │   │   └── Settings/         # Settings controllers (Inertia)
 │   │   │   ├── Middleware/
 │   │   │   │   └── ApiKeyAuth.php
 │   │   │   └── Requests/             # Form Request validation
@@ -90,8 +94,17 @@ Zomboid/
 │   │       ├── ServerControlTest.php
 │   │       ├── ConfigManagementTest.php
 │   │       └── PlayerManagementTest.php
-│   └── resources/
-│       └── views/                    # Blade templates (Stage 3)
+│   ├── resources/
+│   │   ├── js/
+│   │   │   ├── pages/                # React page components (Inertia)
+│   │   │   ├── components/           # Reusable React components
+│   │   │   │   └── ui/              # shadcn/ui components
+│   │   │   ├── layouts/              # App and auth layouts
+│   │   │   ├── hooks/                # Custom React hooks
+│   │   │   ├── lib/                  # Utilities
+│   │   │   └── types/                # TypeScript types
+│   │   └── views/
+│   │       └── app.blade.php         # Inertia root template
 ├── game-server/                      # PZ server config overrides
 │   └── .gitkeep
 └── backups/                          # Backup storage (Stage 2)
@@ -427,29 +440,30 @@ Zomboid/
 
 ### Phase 13–15: Web Dashboard (Stage 3)
 
-- Blade + Livewire 3 setup (no separate SPA — same Laravel app)
-- Public server status page (no auth, Livewire polling for live updates)
-- Admin login with Laravel Sanctum session auth
+- React + Inertia pages for all dashboard views (same Laravel app, no separate SPA)
+- Public server status page (no auth, Inertia polling for live updates)
+- Admin login via Fortify session auth (already scaffolded by starter kit)
 - Admin dashboard: player management, config editor, mod manager, backup/rollback UI
-- RCON console in browser (Livewire component with WebSocket or polling)
-- Live log streaming (Livewire)
+- RCON console in browser (React component with polling or SSE)
+- Live log streaming (React component with polling)
+- shadcn/ui components for all dashboard UI
 - Caddy reverse proxy with auto-TLS
-- Tailwind CSS, responsive design for mobile admin
+- Tailwind CSS v4, responsive design for mobile admin
 
 ### Phase 16–18: Subscriptions (Stage 4)
 
 - Laravel Cashier (Stripe) for subscription management
-- Player registration with Sanctum token auth
+- Player registration with Fortify session auth
 - Subscription lifecycle (Cashier handles most of this)
 - Auto whitelist sync via Cashier webhook events
-- Player portal (Blade + Livewire)
+- Player portal (React + Inertia pages)
 - Admin subscription management page
 - Scheduled command for periodic sub status checks
 
 ### Phase 19–21: Item Shop (Stage 5)
 
-- Shop item CRUD (Eloquent models + admin Livewire UI)
-- Player shop page with categories (Blade + Livewire)
+- Shop item CRUD (Eloquent models + admin React/Inertia UI)
+- Player shop page with categories (React + Inertia)
 - Stripe payment intents for one-time purchases
 - `DeliverItemJob` with retry logic (Laravel Queue with backoff)
 - Transaction history
@@ -548,8 +562,8 @@ php artisan scribe:generate
 
 | Phase | Status | Notes |
 |---|---|---|
-| Phase 1 — Docker Infrastructure | NOT STARTED | |
-| Phase 2 — Laravel + RCON | NOT STARTED | |
+| Phase 1 — Docker Infrastructure | DONE | docker-compose.yml, .env.example, networking verified |
+| Phase 2 — Laravel + RCON | DONE | React/Inertia starter kit, RconClient, DockerManager, ApiKeyAuth, health endpoint |
 | Phase 3 — Database + Audit | NOT STARTED | |
 | Phase 4 — Server Control | NOT STARTED | |
 | Phase 5 — Config Management | NOT STARTED | |
