@@ -1,0 +1,160 @@
+services:
+  # ---------------------------------------------------------------------------
+  # PZ Game Server — Dedicated server via SteamCMD
+  # ---------------------------------------------------------------------------
+  game-server:
+    image: renegademaster/zomboid-dedicated-server:latest
+    container_name: ${GAME_SERVER_CONTAINER_NAME:-pz-game-server}
+    restart: unless-stopped
+    environment:
+      ADMIN_PASSWORD: ${PZ_ADMIN_PASSWORD:?PZ_ADMIN_PASSWORD is required}
+      ADMIN_USERNAME: ${PZ_ADMIN_USERNAME:-admin}
+      AUTOSAVE_INTERVAL: ${PZ_AUTOSAVE_INTERVAL:-15}
+      BIND_IP: "0.0.0.0"
+      DEFAULT_PORT: ${PZ_GAME_PORT:-16261}
+      GAME_VERSION: ${PZ_STEAM_BRANCH:-public}
+      GC_CONFIG: ${PZ_GC_CONFIG:-ZGC}
+      MAP_NAMES: ${PZ_MAP_NAMES:-Muldraugh, KY}
+      MAX_PLAYERS: ${PZ_MAX_PLAYERS:-16}
+      MAX_RAM: ${PZ_MAX_RAM:-4096m}
+      MOD_NAMES: ${PZ_MOD_IDS:-}
+      MOD_WORKSHOP_IDS: ${PZ_WORKSHOP_IDS:-}
+      PAUSE_ON_EMPTY: ${PZ_PAUSE_ON_EMPTY:-true}
+      PUBLIC_SERVER: ${PZ_PUBLIC_SERVER:-true}
+      RCON_PASSWORD: ${PZ_RCON_PASSWORD:?PZ_RCON_PASSWORD is required}
+      RCON_PORT: ${PZ_RCON_PORT:-27015}
+      SERVER_NAME: ${PZ_SERVER_NAME:-ZomboidServer}
+      SERVER_PASSWORD: ${PZ_SERVER_PASSWORD:-}
+      STEAM_VAC: ${PZ_STEAM_VAC:-true}
+      UDP_PORT: ${PZ_DIRECT_PORT:-16262}
+      USE_STEAM: "true"
+      TZ: ${TZ:-Asia/Tbilisi}
+    ports:
+      - "${PZ_GAME_PORT:-16261}:${PZ_GAME_PORT:-16261}/udp"
+      - "${PZ_DIRECT_PORT:-16262}:${PZ_DIRECT_PORT:-16262}/udp"
+      # RCON port intentionally NOT published — internal Docker network only
+    volumes:
+      - zomboid-server:/home/steam/ZomboidDedicatedServer
+      - zomboid-data:/home/steam/Zomboid
+    networks:
+      - zomboid-net
+    healthcheck:
+      test: ["CMD-SHELL", "ss -uln | grep -q ':${PZ_GAME_PORT:-16261}'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # ---------------------------------------------------------------------------
+  # Laravel Application — API + Web Dashboard
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: pz-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - zomboid-data:/pz-data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      APP_NAME: ${APP_NAME:-PZ Server Manager}
+      APP_ENV: ${APP_ENV:-production}
+      APP_KEY: ${APP_KEY:-}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_URL: ${APP_URL:-http://localhost:8000}
+      DB_CONNECTION: ${DB_CONNECTION:-pgsql}
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${DB_DATABASE:-zomboid}
+      DB_USERNAME: ${DB_USERNAME:-zomboid}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-null}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
+      CACHE_STORE: ${CACHE_STORE:-redis}
+      SESSION_DRIVER: ${SESSION_DRIVER:-redis}
+      API_KEY: ${API_KEY:-}
+      GAME_SERVER_CONTAINER_NAME: ${GAME_SERVER_CONTAINER_NAME:-pz-game-server}
+      PZ_DATA_PATH: /pz-data
+      PZ_SERVER_NAME: ${PZ_SERVER_NAME:-ZomboidServer}
+      PZ_RCON_HOST: game-server
+      PZ_RCON_PORT: ${PZ_RCON_PORT:-27015}
+      PZ_RCON_PASSWORD: ${PZ_RCON_PASSWORD:-}
+      TZ: ${TZ:-Asia/Tbilisi}
+    networks:
+      - zomboid-net
+      - backend-net
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — Primary database
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: pz-db
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-zomboid}
+      POSTGRES_USER: ${DB_USERNAME:-zomboid}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-zomboid} -d ${DB_DATABASE:-zomboid}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend-net
+
+  # ---------------------------------------------------------------------------
+  # Redis — Queue, cache, rate limiting
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: pz-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend-net
+
+# -----------------------------------------------------------------------------
+# Networks
+# -----------------------------------------------------------------------------
+networks:
+  zomboid-net:
+    driver: bridge
+    # Not internal — game-server needs internet for SteamCMD + Steam master servers
+    # RCON security: port not published to host, only accessible between containers
+  backend-net:
+    driver: bridge
+    internal: true
+    # Internal — db and redis never accessible from host or internet
+
+# -----------------------------------------------------------------------------
+# Volumes
+# -----------------------------------------------------------------------------
+volumes:
+  zomboid-server:
+    name: pz-server-files
+  zomboid-data:
+    name: pz-data
+  postgres-data:
+    name: pz-postgres
+  redis-data:
+    name: pz-redis
