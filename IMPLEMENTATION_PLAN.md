@@ -427,11 +427,11 @@ Zomboid/
 
 ### Acceptance Criteria (Stage 2 Complete)
 
-- [ ] **Backups run on schedule without manual intervention**
-- [ ] **Admin can list, create, rollback, delete backups via API**
-- [ ] **Pre-rollback safety backup is always created automatically**
-- [ ] **Whitelist API works — can add/remove users**
-- [ ] All new tests pass
+- [x] **Backups run on schedule without manual intervention**
+- [x] **Admin can list, create, rollback, delete backups via API**
+- [x] **Pre-rollback safety backup is always created automatically**
+- [x] **Whitelist API works — can add/remove users**
+- [x] All new tests pass
 - [ ] Documentation updated
 
 ---
@@ -573,4 +573,4 @@ php artisan scribe:generate
 | Phase 9 — Backup System | DONE | Backup model, BackupManager service, CreateBackupJob, 5 API endpoints, scheduler, queue worker, 28 tests |
 | Phase 10 — Rollback System | DONE | Rollback endpoint with pre-rollback safety backup, file validation, 10 tests |
 | Phase 11 — Whitelist + Schema | DONE | User role+steam_id, WhitelistEntry model, WhitelistManager (SQLite CRUD + sync), 5 API endpoints, 15 tests |
-| Phase 12 — Stage 2 Delivery | NOT STARTED | |
+| Phase 12 — Stage 2 Delivery | DONE | 203 tests passing (740 assertions), integration cycle tests. Scribe + README pending Docker env |
