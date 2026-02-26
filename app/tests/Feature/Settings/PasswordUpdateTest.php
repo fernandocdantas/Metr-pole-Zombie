@@ -31,15 +31,15 @@ class PasswordUpdateTest extends TestCase
             ->from(route('user-password.edit'))
             ->put(route('user-password.update'), [
                 'current_password' => 'password',
-                'password' => 'N3wP@ssw0rd!x',
-                'password_confirmation' => 'N3wP@ssw0rd!x',
+                'password' => 'newsecret',
+                'password_confirmation' => 'newsecret',
             ]);
 
         $response
             ->assertSessionHasNoErrors()
             ->assertRedirect(route('user-password.edit'));
 
-        $this->assertTrue(Hash::check('N3wP@ssw0rd!x', $user->refresh()->password));
+        $this->assertTrue(Hash::check('newsecret', $user->refresh()->password));
     }
 
     public function test_correct_password_must_be_provided_to_update_password()
@@ -51,8 +51,8 @@ class PasswordUpdateTest extends TestCase
             ->from(route('user-password.edit'))
             ->put(route('user-password.update'), [
                 'current_password' => 'wrong-password',
-                'password' => 'N3wP@ssw0rd!x',
-                'password_confirmation' => 'N3wP@ssw0rd!x',
+                'password' => 'newsecret',
+                'password_confirmation' => 'newsecret',
             ]);
 
         $response

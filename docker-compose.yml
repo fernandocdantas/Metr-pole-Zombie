@@ -30,37 +30,20 @@ services:
         condition: service_healthy
     ports:
       - "${APP_PORT:-8000}:8000"
+      - "5173:5173"
     volumes:
+      - ./app:/var/www/html
       - zomboid-data:/pz-data:ro
       - backup-data:/backups
       - /var/run/docker.sock:/var/run/docker.sock
+    env_file: ./app/.env
     environment:
-      APP_NAME: ${APP_NAME:-PZ Server Manager}
-      APP_ENV: ${APP_ENV:-production}
-      APP_KEY: ${APP_KEY:-}
-      APP_DEBUG: ${APP_DEBUG:-false}
-      APP_URL: ${APP_URL:-http://localhost:8000}
-      DB_CONNECTION: ${DB_CONNECTION:-pgsql}
       DB_HOST: ${DB_HOST:-db}
-      DB_PORT: ${DB_PORT:-5432}
-      DB_DATABASE: ${DB_DATABASE:-zomboid}
-      DB_USERNAME: ${DB_USERNAME:-zomboid}
-      DB_PASSWORD: ${DB_PASSWORD:-zomboid}
       REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-null}
-      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
-      CACHE_STORE: ${CACHE_STORE:-redis}
-      SESSION_DRIVER: ${SESSION_DRIVER:-redis}
-      API_KEY: ${API_KEY:-}
       GAME_SERVER_CONTAINER_NAME: ${GAME_SERVER_CONTAINER_NAME:-pz-game-server}
       PZ_DATA_PATH: /pz-data
-      PZ_SERVER_NAME: ${PZ_SERVER_NAME:-ZomboidServer}
       PZ_RCON_HOST: game-server
-      PZ_RCON_PORT: ${PZ_RCON_PORT:-27015}
-      PZ_RCON_PASSWORD: ${PZ_RCON_PASSWORD:-changeme}
       BACKUP_PATH: /backups
-      TZ: ${TZ:-Asia/Tbilisi}
     networks:
       - zomboid-net
       - backend-net
@@ -83,29 +66,13 @@ services:
     volumes:
       - zomboid-data:/pz-data:ro
       - backup-data:/backups
+    env_file: ./app/.env
     environment:
-      APP_NAME: ${APP_NAME:-PZ Server Manager}
-      APP_ENV: ${APP_ENV:-production}
-      APP_KEY: ${APP_KEY:-}
-      APP_DEBUG: ${APP_DEBUG:-false}
-      DB_CONNECTION: ${DB_CONNECTION:-pgsql}
       DB_HOST: ${DB_HOST:-db}
-      DB_PORT: ${DB_PORT:-5432}
-      DB_DATABASE: ${DB_DATABASE:-zomboid}
-      DB_USERNAME: ${DB_USERNAME:-zomboid}
-      DB_PASSWORD: ${DB_PASSWORD:-zomboid}
       REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-null}
-      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
-      CACHE_STORE: ${CACHE_STORE:-redis}
       PZ_DATA_PATH: /pz-data
-      PZ_SERVER_NAME: ${PZ_SERVER_NAME:-ZomboidServer}
       PZ_RCON_HOST: game-server
-      PZ_RCON_PORT: ${PZ_RCON_PORT:-27015}
-      PZ_RCON_PASSWORD: ${PZ_RCON_PASSWORD:-changeme}
       BACKUP_PATH: /backups
-      TZ: ${TZ:-Asia/Tbilisi}
     networks:
       - zomboid-net
       - backend-net

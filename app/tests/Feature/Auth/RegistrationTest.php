@@ -21,8 +21,8 @@ class RegistrationTest extends TestCase
     {
         $response = $this->post(route('register.store'), [
             'username' => 'testplayer',
-            'password' => 'P@ssw0rd!2024x',
-            'password_confirmation' => 'P@ssw0rd!2024x',
+            'password' => 'secret',
+            'password_confirmation' => 'secret',
         ]);
 
         $this->assertAuthenticated();
@@ -33,8 +33,8 @@ class RegistrationTest extends TestCase
     {
         $this->post(route('register.store'), [
             'username' => 'testplayer',
-            'password' => 'P@ssw0rd!2024x',
-            'password_confirmation' => 'P@ssw0rd!2024x',
+            'password' => 'secret',
+            'password_confirmation' => 'secret',
         ]);
 
         $this->assertAuthenticated();
@@ -46,7 +46,7 @@ class RegistrationTest extends TestCase
 
         $entry = WhitelistEntry::where('pz_username', 'testplayer')->first();
         $this->assertNotNull($entry->user_id);
-        $this->assertEquals('P@ssw0rd!2024x', $entry->pz_password_hash);
+        $this->assertEquals('secret', $entry->pz_password_hash);
     }
 
     public function test_registration_with_optional_email()
@@ -54,8 +54,8 @@ class RegistrationTest extends TestCase
         $response = $this->post(route('register.store'), [
             'username' => 'emailplayer',
             'email' => 'player@example.com',
-            'password' => 'P@ssw0rd!2024x',
-            'password_confirmation' => 'P@ssw0rd!2024x',
+            'password' => 'secret',
+            'password_confirmation' => 'secret',
         ]);
 
         $this->assertAuthenticated();
@@ -69,8 +69,8 @@ class RegistrationTest extends TestCase
     {
         $this->post(route('register.store'), [
             'username' => 'takenname',
-            'password' => 'P@ssw0rd!2024x',
-            'password_confirmation' => 'P@ssw0rd!2024x',
+            'password' => 'secret',
+            'password_confirmation' => 'secret',
         ]);
 
         // Log out so we can attempt a second registration
@@ -78,8 +78,8 @@ class RegistrationTest extends TestCase
 
         $response = $this->post(route('register.store'), [
             'username' => 'takenname',
-            'password' => 'P@ssw0rd!2024x',
-            'password_confirmation' => 'P@ssw0rd!2024x',
+            'password' => 'secret',
+            'password_confirmation' => 'secret',
         ]);
 
         $response->assertSessionHasErrors('username');
@@ -89,8 +89,8 @@ class RegistrationTest extends TestCase
     {
         $response = $this->post(route('register.store'), [
             'username' => 'invalid user!',
-            'password' => 'P@ssw0rd!2024x',
-            'password_confirmation' => 'P@ssw0rd!2024x',
+            'password' => 'secret',
+            'password_confirmation' => 'secret',
         ]);
 
         $response->assertSessionHasErrors('username');
@@ -100,8 +100,8 @@ class RegistrationTest extends TestCase
     {
         $response = $this->post(route('register.store'), [
             'username' => 'ab',
-            'password' => 'P@ssw0rd!2024x',
-            'password_confirmation' => 'P@ssw0rd!2024x',
+            'password' => 'secret',
+            'password_confirmation' => 'secret',
         ]);
 
         $response->assertSessionHasErrors('username');
