@@ -659,6 +659,6 @@ php artisan scribe:generate
 | Phase 10 — Rollback System | DONE | Rollback endpoint with pre-rollback safety backup, file validation, 10 tests |
 | Phase 11 — Whitelist + Schema | DONE | User role+steam_id, WhitelistEntry model, WhitelistManager (SQLite CRUD + sync), 5 API endpoints, 15 tests |
 | Phase 12 — Stage 2 Delivery | DONE | 203 tests passing (740 assertions), integration cycle tests. Scribe + README pending Docker env |
-| Phase 13 — Public Pages + Dashboard | IN PROGRESS | Landing page, /status page, dashboard overview with real data |
-| Phase 14 — Admin Management Pages | TODO | Player, config, mod, backup, whitelist, audit log pages |
-| Phase 15 — RCON Console + Live Logs | TODO | RCON console, log viewer, server controls, polish |
+| Phase 13 — Public Pages + Dashboard | DONE | Landing page, /status page with polling, dashboard overview, branding, 8 new tests |
+| Phase 14 — Admin Management Pages | DONE | 6 admin pages (players, config, mods, backups, whitelist, audit), 19 new tests |
+| Phase 15 — RCON Console + Live Logs | DONE | RCON console, live log viewer, server start/stop/restart/save controls, 11 new tests |
