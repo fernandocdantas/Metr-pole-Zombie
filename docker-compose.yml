@@ -142,6 +142,7 @@ volumes:
     name: pz-data
   postgres-data:
     name: pz-postgres
+    external: true
   redis-data:
     name: pz-redis
   backup-data:

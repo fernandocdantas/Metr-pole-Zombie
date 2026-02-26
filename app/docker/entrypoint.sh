@@ -36,6 +36,16 @@ if echo "$@" | grep -q "supervisord"; then
         php artisan storage:link --no-interaction 2>/dev/null || true
     fi
 
+    # Pre-migration database backup
+    if php artisan migrate:status --no-interaction 2>/dev/null | grep -q "Ran"; then
+        BACKUP_FILE="/backups/db-pre-migrate-$(date +%Y%m%d-%H%M%S).sql"
+        echo "[entrypoint] Backing up database before migrations..."
+        PGPASSWORD="${DB_PASSWORD}" pg_dump -h "${DB_HOST:-db}" -U "${DB_USERNAME:-zomboid}" \
+            -d "${DB_DATABASE:-zomboid}" --no-owner > "$BACKUP_FILE" 2>/dev/null \
+            && echo "[entrypoint] Backup saved to $BACKUP_FILE" \
+            || echo "[entrypoint] Backup skipped (pg_dump not available or DB empty)"
+    fi
+
     # Database migrations
     echo "[entrypoint] Running database migrations..."
     php artisan migrate --force --no-interaction 2>&1 || {

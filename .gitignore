@@ -28,6 +28,9 @@ Thumbs.db
 # Docker
 docker-compose.override.yml
 
+# Database backups (local)
+db-backups/
+
 # Game server data (generated at runtime)
 game-server/data/
 backups/*.tar.gz

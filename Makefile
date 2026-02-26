@@ -7,7 +7,7 @@ endif
 
 COMPOSE := docker compose -f docker-compose.yml -f $(ARCH_FILE)
 
-.PHONY: up down build restart logs ps stop pull migrate test exec arch init
+.PHONY: up down build restart logs ps stop pull migrate test exec arch init db-backup nuke
 
 # ── First-run setup ──────────────────────────────────────────────────
 # Generates .env with random secrets from .env.example template
@@ -33,6 +33,8 @@ init:
 		echo "  Edit .env to customize server settings before starting"; \
 		echo ""; \
 	fi
+	@docker volume inspect pz-postgres >/dev/null 2>&1 || \
+		(echo "Creating postgres volume..." && docker volume create pz-postgres)
 
 # ── Core commands ────────────────────────────────────────────────────
 up: init
@@ -40,6 +42,13 @@ up: init
 
 down:
 	$(COMPOSE) down
+
+nuke:
+	@echo "WARNING: This will destroy ALL data (database, game saves, backups)."
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read _confirm
+	$(COMPOSE) down -v
+	@docker volume rm pz-postgres 2>/dev/null || true
 
 build:
 	$(COMPOSE) build
@@ -60,7 +69,7 @@ pull:
 	$(COMPOSE) pull
 
 # ── App commands ─────────────────────────────────────────────────────
-migrate:
+migrate: db-backup
 	$(COMPOSE) exec app php artisan migrate --force
 
 test:
@@ -71,3 +80,22 @@ exec:
 
 arch:
 	@echo "Detected: $(ARCH) -> $(ARCH_FILE)"
+
+# ── Database ─────────────────────────────────────────────────────────
+db-backup:
+	@mkdir -p db-backups
+	@echo "Backing up database..."
+	@docker exec pz-db pg_dump -U zomboid -d zomboid --no-owner \
+		> db-backups/backup-$$(date +%Y%m%d-%H%M%S).sql 2>/dev/null \
+		&& echo "Backup saved to db-backups/" \
+		|| echo "No database to backup (first run?)"
+
+db-restore:
+	@LATEST=$$(ls -t db-backups/*.sql 2>/dev/null | head -1); \
+	if [ -z "$$LATEST" ]; then \
+		echo "No backups found in db-backups/"; \
+	else \
+		echo "Restoring from $$LATEST ..."; \
+		docker exec -i pz-db psql -U zomboid -d zomboid < "$$LATEST"; \
+		echo "Restored."; \
+	fi

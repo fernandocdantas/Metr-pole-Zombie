@@ -6,6 +6,7 @@ RUN apk add --no-cache \
     supervisor \
     curl \
     libpq-dev \
+    postgresql16-client \
     sqlite-dev \
     linux-headers \
     nodejs \
