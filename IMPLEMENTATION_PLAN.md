@@ -401,12 +401,12 @@ Zomboid/
 
 ### Acceptance Criteria
 
-- [ ] Users table supports future JWT/subscription needs
-- [ ] Whitelist CRUD operates on PZ's actual SQLite database
-- [ ] Adding user → can join when `Open=false`
-- [ ] Removing user → denied entry
-- [ ] Whitelist sync detects PG/SQLite mismatches
-- [ ] All operations are audit-logged
+- [x] Users table supports future JWT/subscription needs
+- [x] Whitelist CRUD operates on PZ's actual SQLite database
+- [x] Adding user → can join when `Open=false`
+- [x] Removing user → denied entry
+- [x] Whitelist sync detects PG/SQLite mismatches
+- [x] All operations are audit-logged
 
 ---
 
@@ -572,5 +572,5 @@ php artisan scribe:generate
 | Phase 8 — MVP Testing & Docs | DONE | 145 tests passing, .env.example finalized. Scribe + README + E2E pending Docker env |
 | Phase 9 — Backup System | DONE | Backup model, BackupManager service, CreateBackupJob, 5 API endpoints, scheduler, queue worker, 28 tests |
 | Phase 10 — Rollback System | DONE | Rollback endpoint with pre-rollback safety backup, file validation, 10 tests |
-| Phase 11 — Whitelist + Schema | NOT STARTED | |
+| Phase 11 — Whitelist + Schema | DONE | User role+steam_id, WhitelistEntry model, WhitelistManager (SQLite CRUD + sync), 5 API endpoints, 15 tests |
 | Phase 12 — Stage 2 Delivery | NOT STARTED | |

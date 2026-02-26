@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\ModController;
 use App\Http\Controllers\Api\PlayerController;
 use App\Http\Controllers\Api\ServerController;
+use App\Http\Controllers\Api\WhitelistController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -57,4 +58,10 @@ Route::middleware(['auth.apikey', 'audit'])->group(function () {
     Route::post('/backups/{backup}/rollback', [BackupController::class, 'rollback']);
     Route::get('/backups/schedule', [BackupController::class, 'schedule']);
     Route::put('/backups/schedule', [BackupController::class, 'updateSchedule']);
+
+    Route::get('/whitelist', [WhitelistController::class, 'index']);
+    Route::post('/whitelist', [WhitelistController::class, 'store']);
+    Route::delete('/whitelist/{username}', [WhitelistController::class, 'destroy']);
+    Route::get('/whitelist/{username}/status', [WhitelistController::class, 'status']);
+    Route::post('/whitelist/sync', [WhitelistController::class, 'sync']);
 });
