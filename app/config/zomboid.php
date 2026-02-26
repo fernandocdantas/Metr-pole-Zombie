@@ -44,6 +44,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Backup Configuration
+    |--------------------------------------------------------------------------
+    */
+    'backups' => [
+        'path' => env('BACKUP_PATH', '/backups'),
+        'retention' => [
+            'manual' => (int) env('BACKUP_RETENTION_MANUAL', 10),
+            'scheduled' => (int) env('BACKUP_RETENTION_SCHEDULED', 24),
+            'daily' => (int) env('BACKUP_RETENTION_DAILY', 7),
+            'pre_rollback' => (int) env('BACKUP_RETENTION_PRE_ROLLBACK', 5),
+            'pre_update' => (int) env('BACKUP_RETENTION_PRE_UPDATE', 3),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | API Authentication
     |--------------------------------------------------------------------------
     */

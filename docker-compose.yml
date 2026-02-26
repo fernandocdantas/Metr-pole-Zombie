@@ -32,6 +32,7 @@ services:
       - "${APP_PORT:-8000}:8000"
     volumes:
       - zomboid-data:/pz-data:ro
+      - backup-data:/backups
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       APP_NAME: ${APP_NAME:-PZ Server Manager}
@@ -58,6 +59,52 @@ services:
       PZ_RCON_HOST: game-server
       PZ_RCON_PORT: ${PZ_RCON_PORT:-27015}
       PZ_RCON_PASSWORD: ${PZ_RCON_PASSWORD:-}
+      BACKUP_PATH: /backups
+      TZ: ${TZ:-Asia/Tbilisi}
+    networks:
+      - zomboid-net
+      - backend-net
+
+  # ---------------------------------------------------------------------------
+  # Queue Worker — Processes backup jobs, restart jobs, etc.
+  # ---------------------------------------------------------------------------
+  queue:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: pz-queue
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: php artisan queue:work redis --tries=3 --timeout=300 --sleep=3
+    volumes:
+      - zomboid-data:/pz-data:ro
+      - backup-data:/backups
+    environment:
+      APP_NAME: ${APP_NAME:-PZ Server Manager}
+      APP_ENV: ${APP_ENV:-production}
+      APP_KEY: ${APP_KEY:-}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      DB_CONNECTION: ${DB_CONNECTION:-pgsql}
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${DB_DATABASE:-zomboid}
+      DB_USERNAME: ${DB_USERNAME:-zomboid}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-null}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
+      CACHE_STORE: ${CACHE_STORE:-redis}
+      PZ_DATA_PATH: /pz-data
+      PZ_SERVER_NAME: ${PZ_SERVER_NAME:-ZomboidServer}
+      PZ_RCON_HOST: game-server
+      PZ_RCON_PORT: ${PZ_RCON_PORT:-27015}
+      PZ_RCON_PASSWORD: ${PZ_RCON_PASSWORD:-}
+      BACKUP_PATH: /backups
       TZ: ${TZ:-Asia/Tbilisi}
     networks:
       - zomboid-net
@@ -127,3 +174,5 @@ volumes:
     name: pz-postgres
   redis-data:
     name: pz-redis
+  backup-data:
+    name: pz-backups

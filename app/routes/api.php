@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuditLogController;
+use App\Http\Controllers\Api\BackupController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\ModController;
@@ -49,4 +50,10 @@ Route::middleware(['auth.apikey', 'audit'])->group(function () {
     Route::post('/config/mods', [ModController::class, 'store']);
     Route::delete('/config/mods/{workshopId}', [ModController::class, 'destroy']);
     Route::put('/config/mods/order', [ModController::class, 'reorder']);
+
+    Route::get('/backups', [BackupController::class, 'index']);
+    Route::post('/backups', [BackupController::class, 'store']);
+    Route::delete('/backups/{backup}', [BackupController::class, 'destroy']);
+    Route::get('/backups/schedule', [BackupController::class, 'schedule']);
+    Route::put('/backups/schedule', [BackupController::class, 'updateSchedule']);
 });

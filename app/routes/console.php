@@ -1,8 +1,25 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use App\Enums\BackupType;
+use App\Jobs\CreateBackupJob;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+Schedule::job(new CreateBackupJob(BackupType::Scheduled))
+    ->hourly()
+    ->when(function () {
+        try {
+            return cache()->get('backup.schedule.hourly_enabled', true);
+        } catch (\Throwable) {
+            return true;
+        }
+    });
+
+Schedule::job(new CreateBackupJob(BackupType::Daily))
+    ->dailyAt('04:00')
+    ->when(function () {
+        try {
+            return cache()->get('backup.schedule.daily_enabled', true);
+        } catch (\Throwable) {
+            return true;
+        }
+    });

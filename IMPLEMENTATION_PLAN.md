@@ -352,11 +352,11 @@ Zomboid/
 
 ### Acceptance Criteria
 
-- [ ] Manual backup creates valid tar.gz of save directory + config files
-- [ ] Backup metadata recorded in PostgreSQL
-- [ ] Scheduled backups run automatically (hourly and daily)
-- [ ] Retention policy enforced: old backups auto-deleted
-- [ ] Backups can be listed, inspected, and deleted via API
+- [x] Manual backup creates valid tar.gz of save directory + config files
+- [x] Backup metadata recorded in PostgreSQL
+- [x] Scheduled backups run automatically (hourly and daily)
+- [x] Retention policy enforced: old backups auto-deleted
+- [x] Backups can be listed, inspected, and deleted via API
 
 ---
 
@@ -570,7 +570,7 @@ php artisan scribe:generate
 | Phase 6 — Player Management | DONE | 10 endpoints, kick/ban/unban/setaccess/teleport/additem/addxp/godmode, 22 tests |
 | Phase 7 — Mod Management | DONE | ModManager service, add/remove/reorder endpoints, paired list sync, 11 tests |
 | Phase 8 — MVP Testing & Docs | DONE | 145 tests passing, .env.example finalized. Scribe + README + E2E pending Docker env |
-| Phase 9 — Backup System | NOT STARTED | |
+| Phase 9 — Backup System | DONE | Backup model, BackupManager service, CreateBackupJob, 5 API endpoints, scheduler, queue worker, 28 tests |
 | Phase 10 — Rollback System | NOT STARTED | |
 | Phase 11 — Whitelist + Schema | NOT STARTED | |
 | Phase 12 — Stage 2 Delivery | NOT STARTED | |
