@@ -3,9 +3,12 @@
 use App\Enums\UserRole;
 use App\Models\User;
 use App\Models\WhitelistEntry;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -427,6 +430,78 @@ describe('PZ account sync command', function () {
 
         DB::connection('pz_sqlite')->disconnect();
         @unlink($dbPath);
+    });
+});
+
+describe('Email verification enforcement', function () {
+    it('blocks unverified admin from dashboard', function () {
+        $user = User::factory()->unverified()->admin()->create();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('verification.notice'));
+    });
+
+    it('allows verified admin to access dashboard', function () {
+        $user = User::factory()->admin()->create();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk();
+    });
+
+    it('allows unverified player to change password', function () {
+        $user = User::factory()->unverified()->create();
+
+        $this->actingAs($user)
+            ->get(route('user-password.edit'))
+            ->assertOk();
+    });
+
+    it('allows player without email to access portal', function () {
+        $user = User::factory()->create(['email' => null, 'email_verified_at' => null]);
+
+        $this->actingAs($user)
+            ->get(route('portal'))
+            ->assertOk();
+    });
+
+    it('redirects player to portal after email verification', function () {
+        $user = User::factory()->unverified()->create();
+
+        Event::fake();
+
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(60),
+            ['id' => $user->id, 'hash' => sha1($user->email)],
+        );
+
+        $this->actingAs($user)
+            ->get($verificationUrl)
+            ->assertRedirect('/portal?verified=1');
+
+        Event::assertDispatched(Verified::class);
+        expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
+    });
+
+    it('redirects admin to dashboard after email verification', function () {
+        $user = User::factory()->unverified()->admin()->create();
+
+        Event::fake();
+
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(60),
+            ['id' => $user->id, 'hash' => sha1($user->email)],
+        );
+
+        $this->actingAs($user)
+            ->get($verificationUrl)
+            ->assertRedirect('/dashboard?verified=1');
+
+        Event::assertDispatched(Verified::class);
+        expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
     });
 });
 
