@@ -31,7 +31,7 @@ class BackupController extends Controller
         $backups = $query->paginate(15);
 
         return Inertia::render('admin/backups', [
-            'backups' => BackupResource::collection($backups),
+            'backups' => Inertia::defer(fn () => BackupResource::collection($backups)),
         ]);
     }
 

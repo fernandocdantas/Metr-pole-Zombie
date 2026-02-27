@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Deferred, Head, router } from '@inertiajs/react';
 import { Filter, ScrollText } from 'lucide-react';
 import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
     Select,
     SelectContent,
@@ -68,7 +69,7 @@ export default function Audit({
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Audit Log</h1>
                     <p className="text-muted-foreground">
-                        {logs.total} event{logs.total !== 1 ? 's' : ''} recorded
+                        {logs ? `${logs.total} event${logs.total !== 1 ? 's' : ''} recorded` : 'Loading...'}
                     </p>
                 </div>
 
@@ -143,65 +144,85 @@ export default function Audit({
                         <CardDescription>All admin actions logged with details</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {logs.data.length > 0 ? (
+                        <Deferred data="logs" fallback={
                             <div className="space-y-2">
-                                {logs.data.map((entry) => (
-                                    <div
-                                        key={entry.id}
-                                        className="rounded-lg border border-border/50 px-4 py-3"
-                                    >
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                    <div key={i} className="rounded-lg border border-border/50 px-4 py-3">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                <Badge variant="outline" className="text-xs font-mono">
-                                                    {entry.action}
-                                                </Badge>
-                                                {entry.target && (
-                                                    <span className="text-sm text-muted-foreground">{entry.target}</span>
-                                                )}
+                                                <Skeleton className="h-5 w-24 rounded-full" />
+                                                <Skeleton className="h-4 w-32" />
                                             </div>
-                                            <span className="text-xs text-muted-foreground">
-                                                {entry.created_at
-                                                    ? new Date(entry.created_at).toLocaleString()
-                                                    : ''}
-                                            </span>
+                                            <Skeleton className="h-3 w-28" />
                                         </div>
-                                        <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground">
-                                            <span>by {entry.actor}</span>
-                                            {entry.ip_address && <span>from {entry.ip_address}</span>}
+                                        <div className="mt-1 flex items-center gap-4">
+                                            <Skeleton className="h-3 w-20" />
+                                            <Skeleton className="h-3 w-24" />
                                         </div>
-                                        {entry.details && Object.keys(entry.details).length > 0 && (
-                                            <pre className="mt-2 max-h-32 overflow-auto rounded bg-muted/50 p-2 text-xs font-mono">
-                                                {JSON.stringify(entry.details, null, 2)}
-                                            </pre>
-                                        )}
                                     </div>
                                 ))}
                             </div>
-                        ) : (
-                            <p className="py-8 text-center text-muted-foreground">No audit events found</p>
-                        )}
+                        }>
+                            {logs?.data.length > 0 ? (
+                                <div className="space-y-2">
+                                    {logs.data.map((entry) => (
+                                        <div
+                                            key={entry.id}
+                                            className="rounded-lg border border-border/50 px-4 py-3"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="outline" className="text-xs font-mono">
+                                                        {entry.action}
+                                                    </Badge>
+                                                    {entry.target && (
+                                                        <span className="text-sm text-muted-foreground">{entry.target}</span>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {entry.created_at
+                                                        ? new Date(entry.created_at).toLocaleString()
+                                                        : ''}
+                                                </span>
+                                            </div>
+                                            <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground">
+                                                <span>by {entry.actor}</span>
+                                                {entry.ip_address && <span>from {entry.ip_address}</span>}
+                                            </div>
+                                            {entry.details && Object.keys(entry.details).length > 0 && (
+                                                <pre className="mt-2 max-h-32 overflow-auto rounded bg-muted/50 p-2 text-xs font-mono">
+                                                    {JSON.stringify(entry.details, null, 2)}
+                                                </pre>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="py-8 text-center text-muted-foreground">No audit events found</p>
+                            )}
 
-                        {/* Pagination */}
-                        {logs.last_page > 1 && (
-                            <div className="mt-4 flex items-center justify-center gap-2">
-                                {Array.from({ length: logs.last_page }, (_, i) => i + 1).map((page) => (
-                                    <Button
-                                        key={page}
-                                        variant={page === logs.current_page ? 'default' : 'outline'}
-                                        size="sm"
-                                        onClick={() =>
-                                            router.get(
-                                                '/admin/audit',
-                                                { ...localFilters, page },
-                                                { preserveState: true },
-                                            )
-                                        }
-                                    >
-                                        {page}
-                                    </Button>
-                                ))}
-                            </div>
-                        )}
+                            {/* Pagination */}
+                            {logs?.last_page > 1 && (
+                                <div className="mt-4 flex items-center justify-center gap-2">
+                                    {Array.from({ length: logs.last_page }, (_, i) => i + 1).map((page) => (
+                                        <Button
+                                            key={page}
+                                            variant={page === logs.current_page ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() =>
+                                                router.get(
+                                                    '/admin/audit',
+                                                    { ...localFilters, page },
+                                                    { preserveState: true },
+                                                )
+                                            }
+                                        >
+                                            {page}
+                                        </Button>
+                                    ))}
+                                </div>
+                            )}
+                        </Deferred>
                     </CardContent>
                 </Card>
             </div>

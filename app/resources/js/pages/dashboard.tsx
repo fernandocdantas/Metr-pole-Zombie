@@ -1,4 +1,4 @@
-import { Head, router, usePoll } from '@inertiajs/react';
+import { Deferred, Head, router, usePoll } from '@inertiajs/react';
 import {
     Archive,
     Circle,
@@ -16,6 +16,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { fetchAction } from '@/lib/fetch-action';
 import type { BreadcrumbItem, DashboardData } from '@/types';
 import { dashboard } from '@/routes';
@@ -137,35 +138,58 @@ export default function Dashboard({
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">Backups</CardTitle>
-                            <Archive className="size-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{backup_summary.total_count}</div>
-                            <p className="text-xs text-muted-foreground">{backup_summary.total_size_human} total</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">Last Backup</CardTitle>
-                            <HardDrive className="size-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="truncate text-2xl font-bold">
-                                {backup_summary.last_backup
-                                    ? new Date(backup_summary.last_backup.created_at).toLocaleDateString()
-                                    : 'Never'}
-                            </div>
-                            {backup_summary.last_backup && (
-                                <p className="text-xs text-muted-foreground">
-                                    {backup_summary.last_backup.size_human} ({backup_summary.last_backup.type})
-                                </p>
-                            )}
-                        </CardContent>
-                    </Card>
+                    <Deferred data="backup_summary" fallback={
+                        <>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                    <CardTitle className="text-sm font-medium text-muted-foreground">Backups</CardTitle>
+                                    <Archive className="size-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <Skeleton className="h-8 w-12" />
+                                    <Skeleton className="mt-1 h-3 w-20" />
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                    <CardTitle className="text-sm font-medium text-muted-foreground">Last Backup</CardTitle>
+                                    <HardDrive className="size-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <Skeleton className="h-8 w-24" />
+                                </CardContent>
+                            </Card>
+                        </>
+                    }>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium text-muted-foreground">Backups</CardTitle>
+                                <Archive className="size-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{backup_summary?.total_count}</div>
+                                <p className="text-xs text-muted-foreground">{backup_summary?.total_size_human} total</p>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium text-muted-foreground">Last Backup</CardTitle>
+                                <HardDrive className="size-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="truncate text-2xl font-bold">
+                                    {backup_summary?.last_backup
+                                        ? new Date(backup_summary.last_backup.created_at).toLocaleDateString()
+                                        : 'Never'}
+                                </div>
+                                {backup_summary?.last_backup && (
+                                    <p className="text-xs text-muted-foreground">
+                                        {backup_summary.last_backup.size_human} ({backup_summary.last_backup.type})
+                                    </p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </Deferred>
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-2">
@@ -211,34 +235,48 @@ export default function Dashboard({
                             <CardDescription>Latest admin actions</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            {recent_audit.length > 0 ? (
+                            <Deferred data="recent_audit" fallback={
                                 <div className="space-y-3">
-                                    {recent_audit.map((entry) => (
-                                        <div key={entry.id} className="flex items-start justify-between gap-2">
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <Badge variant="outline" className="shrink-0 text-xs">
-                                                        {entry.action}
-                                                    </Badge>
-                                                    {entry.target && (
-                                                        <span className="truncate text-sm text-muted-foreground">
-                                                            {entry.target}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <p className="mt-0.5 text-xs text-muted-foreground">
-                                                    {entry.actor}
-                                                    {entry.created_at && (
-                                                        <> &middot; {new Date(entry.created_at).toLocaleString()}</>
-                                                    )}
-                                                </p>
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                        <div key={i} className="flex items-start gap-2">
+                                            <Skeleton className="h-5 w-24 shrink-0" />
+                                            <div className="flex-1 space-y-1">
+                                                <Skeleton className="h-4 w-32" />
+                                                <Skeleton className="h-3 w-48" />
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            ) : (
-                                <p className="text-sm text-muted-foreground">No recent activity</p>
-                            )}
+                            }>
+                                {recent_audit?.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {recent_audit.map((entry) => (
+                                            <div key={entry.id} className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant="outline" className="shrink-0 text-xs">
+                                                            {entry.action}
+                                                        </Badge>
+                                                        {entry.target && (
+                                                            <span className="truncate text-sm text-muted-foreground">
+                                                                {entry.target}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="mt-0.5 text-xs text-muted-foreground">
+                                                        {entry.actor}
+                                                        {entry.created_at && (
+                                                            <> &middot; {new Date(entry.created_at).toLocaleString()}</>
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">No recent activity</p>
+                                )}
+                            </Deferred>
                         </CardContent>
                     </Card>
                 </div>

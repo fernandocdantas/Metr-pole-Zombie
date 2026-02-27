@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Deferred, Head, router } from '@inertiajs/react';
 import { Archive, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { fetchAction } from '@/lib/fetch-action';
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { BackupEntry, BreadcrumbItem } from '@/types';
 
 type PaginatedBackups = {
@@ -86,7 +87,7 @@ export default function Backups({ backups }: { backups: PaginatedBackups }) {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Backup Management</h1>
-                        <p className="text-muted-foreground">{backups.total} backup{backups.total !== 1 ? 's' : ''}</p>
+                        <p className="text-muted-foreground">{backups ? `${backups.total} backup${backups.total !== 1 ? 's' : ''}` : 'Loading...'}</p>
                     </div>
                     <Button onClick={() => setShowCreate(true)}>
                         <Plus className="mr-1.5 size-4" />
@@ -103,65 +104,88 @@ export default function Backups({ backups }: { backups: PaginatedBackups }) {
                         <CardDescription>Server world saves with rollback support</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {backups.data.length > 0 ? (
+                        <Deferred data="backups" fallback={
                             <div className="space-y-2">
-                                {backups.data.map((backup) => (
-                                    <div
-                                        key={backup.id}
-                                        className="flex items-center justify-between rounded-lg border border-border/50 px-4 py-3"
-                                    >
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                    <div key={i} className="flex items-center justify-between rounded-lg border border-border/50 px-4 py-3">
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2">
-                                                <span className="truncate font-medium text-sm">{backup.filename}</span>
-                                                <Badge className={`text-xs ${typeColors[backup.type] ?? ''}`}>
-                                                    {backup.type}
-                                                </Badge>
+                                                <Skeleton className="h-4 w-48" />
+                                                <Skeleton className="h-5 w-16 rounded-full" />
                                             </div>
-                                            <div className="mt-0.5 text-xs text-muted-foreground">
-                                                {backup.size_human} &middot; {new Date(backup.created_at).toLocaleString()}
-                                                {backup.notes && <> &middot; {backup.notes}</>}
+                                            <div className="mt-1 flex items-center gap-2">
+                                                <Skeleton className="h-3 w-16" />
+                                                <Skeleton className="h-3 w-28" />
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-1.5 ml-4">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setRollbackTarget(backup)}
-                                            >
-                                                <RotateCcw className="mr-1.5 size-3.5" />
-                                                Rollback
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-destructive hover:text-destructive"
-                                                onClick={() => setDeleteTarget(backup)}
-                                            >
-                                                <Trash2 className="size-4" />
-                                            </Button>
+                                        <div className="ml-4 flex items-center gap-1.5">
+                                            <Skeleton className="h-8 w-24 rounded-md" />
+                                            <Skeleton className="h-8 w-8 rounded-md" />
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        ) : (
-                            <p className="py-8 text-center text-muted-foreground">No backups yet</p>
-                        )}
+                        }>
+                            {backups?.data.length > 0 ? (
+                                <div className="space-y-2">
+                                    {backups.data.map((backup) => (
+                                        <div
+                                            key={backup.id}
+                                            className="flex items-center justify-between rounded-lg border border-border/50 px-4 py-3"
+                                        >
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="truncate font-medium text-sm">{backup.filename}</span>
+                                                    <Badge className={`text-xs ${typeColors[backup.type] ?? ''}`}>
+                                                        {backup.type}
+                                                    </Badge>
+                                                </div>
+                                                <div className="mt-0.5 text-xs text-muted-foreground">
+                                                    {backup.size_human} &middot; {new Date(backup.created_at).toLocaleString()}
+                                                    {backup.notes && <> &middot; {backup.notes}</>}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 ml-4">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setRollbackTarget(backup)}
+                                                >
+                                                    <RotateCcw className="mr-1.5 size-3.5" />
+                                                    Rollback
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-destructive hover:text-destructive"
+                                                    onClick={() => setDeleteTarget(backup)}
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="py-8 text-center text-muted-foreground">No backups yet</p>
+                            )}
 
-                        {/* Pagination */}
-                        {backups.last_page > 1 && (
-                            <div className="mt-4 flex items-center justify-center gap-2">
-                                {Array.from({ length: backups.last_page }, (_, i) => i + 1).map((page) => (
-                                    <Button
-                                        key={page}
-                                        variant={page === backups.current_page ? 'default' : 'outline'}
-                                        size="sm"
-                                        onClick={() => router.get('/admin/backups', { page }, { preserveState: true })}
-                                    >
-                                        {page}
-                                    </Button>
-                                ))}
-                            </div>
-                        )}
+                            {/* Pagination */}
+                            {backups?.last_page > 1 && (
+                                <div className="mt-4 flex items-center justify-center gap-2">
+                                    {Array.from({ length: backups.last_page }, (_, i) => i + 1).map((page) => (
+                                        <Button
+                                            key={page}
+                                            variant={page === backups.current_page ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => router.get('/admin/backups', { page }, { preserveState: true })}
+                                        >
+                                            {page}
+                                        </Button>
+                                    ))}
+                                </div>
+                            )}
+                        </Deferred>
                     </CardContent>
                 </Card>
             </div>

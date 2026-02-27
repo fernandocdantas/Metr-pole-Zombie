@@ -1,8 +1,9 @@
-import { Head, Link, router, usePoll } from '@inertiajs/react';
+import { Deferred, Head, Link, router, usePoll } from '@inertiajs/react';
 import { Backpack, Ban, Circle, ShieldCheck, UserX } from 'lucide-react';
 import { useState } from 'react';
 import { fetchAction } from '@/lib/fetch-action';
 import AppLayout from '@/layouts/app-layout';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -154,40 +155,55 @@ export default function Players({ players, registeredUsers }: { players: Player[
                         <CardDescription>All users registered on the platform</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {registeredUsers.length > 0 ? (
+                        <Deferred data="registeredUsers" fallback={
                             <div className="space-y-2">
-                                {registeredUsers.map((user) => (
-                                    <div
-                                        key={user.id}
-                                        className="flex items-center justify-between rounded-lg border border-border/50 px-4 py-3"
-                                    >
+                                {Array.from({ length: 4 }).map((_, i) => (
+                                    <div key={i} className="flex items-center justify-between rounded-lg border border-border/50 px-4 py-3">
                                         <div className="flex items-center gap-3">
-                                            <Circle
-                                                className={`size-2 ${user.isOnline ? 'fill-green-500 text-green-500' : 'fill-muted text-muted'}`}
-                                            />
-                                            <span className="font-medium">{user.username}</span>
-                                            <Badge variant={roleBadgeVariant[user.role] ?? 'outline'}>
-                                                {user.role.replace('_', ' ')}
-                                            </Badge>
+                                            <Skeleton className="size-2 rounded-full" />
+                                            <Skeleton className="h-4 w-24" />
+                                            <Skeleton className="h-5 w-14 rounded-full" />
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm text-muted-foreground">
-                                                Joined {new Date(user.createdAt).toLocaleDateString()}
-                                            </span>
-                                            <Button variant="ghost" size="sm" asChild>
-                                                <Link href={`/admin/players/${user.username}/inventory`}>
-                                                    <Backpack className="size-3.5" />
-                                                </Link>
-                                            </Button>
-                                        </div>
+                                        <Skeleton className="h-4 w-28" />
                                     </div>
                                 ))}
                             </div>
-                        ) : (
-                            <p className="py-8 text-center text-muted-foreground">
-                                No registered users
-                            </p>
-                        )}
+                        }>
+                            {registeredUsers?.length > 0 ? (
+                                <div className="space-y-2">
+                                    {registeredUsers.map((user) => (
+                                        <div
+                                            key={user.id}
+                                            className="flex items-center justify-between rounded-lg border border-border/50 px-4 py-3"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <Circle
+                                                    className={`size-2 ${user.isOnline ? 'fill-green-500 text-green-500' : 'fill-muted text-muted'}`}
+                                                />
+                                                <span className="font-medium">{user.username}</span>
+                                                <Badge variant={roleBadgeVariant[user.role] ?? 'outline'}>
+                                                    {user.role.replace('_', ' ')}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm text-muted-foreground">
+                                                    Joined {new Date(user.createdAt).toLocaleDateString()}
+                                                </span>
+                                                <Button variant="ghost" size="sm" asChild>
+                                                    <Link href={`/admin/players/${user.username}/inventory`}>
+                                                        <Backpack className="size-3.5" />
+                                                    </Link>
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="py-8 text-center text-muted-foreground">
+                                    No registered users
+                                </p>
+                            )}
+                        </Deferred>
                     </CardContent>
                 </Card>
             </div>

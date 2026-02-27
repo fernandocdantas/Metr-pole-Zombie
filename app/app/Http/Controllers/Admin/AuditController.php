@@ -29,7 +29,7 @@ class AuditController extends Controller
             ->all();
 
         return Inertia::render('admin/audit', [
-            'logs' => $logs,
+            'logs' => Inertia::defer(fn () => $logs),
             'filters' => [
                 'action' => $request->query('action', ''),
                 'actor' => $request->query('actor', ''),

@@ -91,8 +91,8 @@ class DashboardController extends Controller
 
         return Inertia::render('dashboard', [
             'server' => $server,
-            'recent_audit' => $recentAudit,
-            'backup_summary' => $backupSummary,
+            'recent_audit' => Inertia::defer(fn () => $recentAudit),
+            'backup_summary' => Inertia::defer(fn () => $backupSummary),
         ]);
     }
 

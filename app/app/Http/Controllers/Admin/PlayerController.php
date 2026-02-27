@@ -39,7 +39,7 @@ class PlayerController extends Controller
 
         return Inertia::render('admin/players', [
             'players' => $onlinePlayers,
-            'registeredUsers' => $registeredUsers,
+            'registeredUsers' => Inertia::defer(fn () => $registeredUsers),
         ]);
     }
 
