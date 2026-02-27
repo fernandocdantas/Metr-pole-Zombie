@@ -12,7 +12,7 @@ services:
       MAP_NAMES: ${PZ_MAP_NAMES:-Muldraugh, KY}
       MAX_PLAYERS: ${PZ_MAX_PLAYERS:-16}
       MAX_RAM: ${PZ_MAX_RAM:-4096m}
-      MOD_NAMES: ${PZ_MOD_IDS:-}
+      MOD_NAMES: "ZomboidManager;${PZ_MOD_IDS:-}"
       MOD_WORKSHOP_IDS: ${PZ_WORKSHOP_IDS:-}
       PAUSE_ON_EMPTY: ${PZ_PAUSE_ON_EMPTY:-true}
       PUBLIC_SERVER: ${PZ_PUBLIC_SERVER:-true}

@@ -36,22 +36,26 @@ class SyncPzAccounts extends Command
         $passwordUpdated = 0;
 
         foreach ($pzAccounts as $account) {
+            $pzPassword = $account->password;
+            $isBcrypt = str_starts_with($pzPassword, '$2');
+
             $existingUser = User::where('username', $account->username)->first();
 
             if ($existingUser) {
-                // Check if PZ password changed (compare plain text)
+                // Check if PZ password changed
                 $entry = $existingUser->whitelistEntries()
                     ->where('pz_username', $account->username)
                     ->first();
 
-                if ($entry && $entry->pz_password_hash !== $account->password) {
-                    // PZ password was changed in-game — update web password
-                    $existingUser->update([
-                        'password' => Hash::make($account->password),
-                    ]);
+                if ($entry && $entry->pz_password_hash !== $pzPassword) {
+                    // PZ password was changed — update web password
+                    // PZ stores bcrypt hashes, so use directly; otherwise hash plain text
+                    $existingUser->forceFill([
+                        'password' => $isBcrypt ? $pzPassword : Hash::make($pzPassword),
+                    ])->save();
 
                     $entry->update([
-                        'pz_password_hash' => $account->password,
+                        'pz_password_hash' => $pzPassword,
                         'synced_at' => now(),
                     ]);
 
@@ -68,10 +72,11 @@ class SyncPzAccounts extends Command
             }
 
             // New PZ account — auto-create web user
-            $user = User::create([
+            // PZ stores bcrypt hashes, so use directly; otherwise hash plain text
+            $user = User::forceCreate([
                 'username' => $account->username,
                 'name' => $account->username,
-                'password' => Hash::make($account->password),
+                'password' => $isBcrypt ? $pzPassword : Hash::make($pzPassword),
                 'role' => UserRole::Player,
             ]);
 

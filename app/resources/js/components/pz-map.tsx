@@ -3,6 +3,8 @@ import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef } from 'react';
 import type { DziInfo, MapConfig, PlayerMarker } from '@/types/server';
 
+type MarkerAction = 'kick' | 'ban' | 'access' | 'inventory';
+
 type PzMapProps = {
     markers: PlayerMarker[];
     mapConfig: MapConfig;
@@ -10,6 +12,7 @@ type PzMapProps = {
     className?: string;
     interactive?: boolean;
     onMarkerClick?: (marker: PlayerMarker) => void;
+    onMarkerAction?: (marker: PlayerMarker, action: MarkerAction) => void;
 };
 
 const statusColors: Record<PlayerMarker['status'], string> = {
@@ -18,22 +21,64 @@ const statusColors: Record<PlayerMarker['status'], string> = {
     dead: '#ef4444',
 };
 
-function createMarkerIcon(status: PlayerMarker['status']): L.DivIcon {
+const labelColors: Record<PlayerMarker['status'], string> = {
+    online: '#4ade80',
+    offline: '#d1d5db',
+    dead: '#f87171',
+};
+
+function createMarkerIcon(status: PlayerMarker['status'], name: string): L.DivIcon {
     const color = statusColors[status];
+    const labelColor = labelColors[status];
     return L.divIcon({
         className: 'pz-marker',
-        html: `<div style="
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: ${color};
-            border: 2px solid white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-        "></div>`,
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
-        popupAnchor: [0, -10],
+        html: `<div style="display:flex;align-items:center;gap:5px;white-space:nowrap;">
+            <div style="
+                width: 18px;
+                height: 18px;
+                min-width: 18px;
+                border-radius: 50%;
+                background: ${color};
+                border: 2px solid white;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+            "></div>
+            <span style="
+                font-size: 13px;
+                font-weight: 600;
+                color: ${labelColor};
+                text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.6);
+                pointer-events: none;
+            ">${name}</span>
+        </div>`,
+        iconSize: [140, 22],
+        iconAnchor: [11, 11],
+        popupAnchor: [0, -12],
     });
+}
+
+function createPopupHtml(marker: PlayerMarker): string {
+    const statusLabel = `<span style="color: ${statusColors[marker.status]}; text-transform: capitalize; font-size: 12px;">${marker.status}</span>`;
+    const coords = `<small style="color: #9ca3af;">X: ${marker.x.toFixed(0)}, Y: ${marker.y.toFixed(0)}, Z: ${marker.z}</small>`;
+
+    const btnStyle = 'display:inline-block;padding:3px 8px;font-size:11px;border-radius:4px;cursor:pointer;border:1px solid #374151;background:#1f2937;color:#e5e7eb;margin:2px;';
+    const btnDanger = 'display:inline-block;padding:3px 8px;font-size:11px;border-radius:4px;cursor:pointer;border:1px solid #7f1d1d;background:#991b1b;color:#fecaca;margin:2px;';
+
+    const actions = marker.is_online
+        ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:2px;">
+            <button class="pz-action" data-action="inventory" style="${btnStyle}">Inventory</button>
+            <button class="pz-action" data-action="access" style="${btnStyle}">Access</button>
+            <button class="pz-action" data-action="kick" style="${btnStyle}">Kick</button>
+            <button class="pz-action" data-action="ban" style="${btnDanger}">Ban</button>
+          </div>`
+        : `<div style="margin-top:6px;">
+            <button class="pz-action" data-action="inventory" style="${btnStyle}">Inventory</button>
+          </div>`;
+
+    return `<div style="min-width:140px;">
+        <strong style="font-size:13px;">${marker.name}</strong><br/>
+        ${statusLabel}<br/>${coords}
+        ${actions}
+    </div>`;
 }
 
 /**
@@ -122,6 +167,7 @@ export default function PzMap({
     className = '',
     interactive = true,
     onMarkerClick,
+    onMarkerAction,
 }: PzMapProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
@@ -184,20 +230,34 @@ export default function PzMap({
         layer.clearLayers();
 
         markers.forEach((marker) => {
-            const icon = createMarkerIcon(marker.status);
+            const label = marker.name && marker.name !== marker.username
+                ? `${marker.name} (${marker.username})`
+                : marker.username;
+            const icon = createMarkerIcon(marker.status, label);
+            const popup = L.popup().setContent(createPopupHtml(marker));
             const lMarker = L.marker([-marker.y, marker.x], { icon })
-                .bindPopup(
-                    `<strong>${marker.name}</strong><br/>` +
-                    `<span style="color: ${statusColors[marker.status]}; text-transform: capitalize;">${marker.status}</span><br/>` +
-                    `<small>X: ${marker.x.toFixed(0)}, Y: ${marker.y.toFixed(0)}, Z: ${marker.z}</small>`,
-                )
+                .bindPopup(popup)
                 .addTo(layer);
+
+            lMarker.on('popupopen', () => {
+                const container = popup.getElement();
+                if (!container) return;
+                container.querySelectorAll<HTMLButtonElement>('.pz-action').forEach((btn) => {
+                    btn.addEventListener('click', (e) => {
+                        const action = (e.currentTarget as HTMLButtonElement).dataset.action as MarkerAction;
+                        if (action && onMarkerAction) {
+                            onMarkerAction(marker, action);
+                            lMarker.closePopup();
+                        }
+                    });
+                });
+            });
 
             if (onMarkerClick) {
                 lMarker.on('click', () => onMarkerClick(marker));
             }
         });
-    }, [markers, onMarkerClick]);
+    }, [markers, onMarkerClick, onMarkerAction]);
 
     return <div ref={containerRef} className={`h-full w-full ${className}`} />;
 }

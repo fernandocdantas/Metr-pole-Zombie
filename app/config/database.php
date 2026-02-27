@@ -46,7 +46,7 @@ return [
 
         'pz_sqlite' => [
             'driver' => 'sqlite',
-            'database' => env('PZ_DATA_PATH', '/pz-data').'/db/serverPZ.db',
+            'database' => env('PZ_DATA_PATH', '/pz-data').'/db/'.env('PZ_SERVER_NAME', 'ZomboidServer').'.db',
             'prefix' => '',
             'foreign_key_constraints' => false,
             'busy_timeout' => 5000,

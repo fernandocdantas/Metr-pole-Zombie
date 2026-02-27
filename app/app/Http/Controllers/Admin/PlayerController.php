@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\OnlinePlayersReader;
 use App\Services\RconClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,21 +17,13 @@ class PlayerController extends Controller
     public function __construct(
         private readonly RconClient $rcon,
         private readonly AuditLogger $auditLogger,
+        private readonly OnlinePlayersReader $onlinePlayers,
     ) {}
 
     public function index(): Response
     {
-        $onlinePlayers = [];
-
-        try {
-            $this->rcon->connect();
-            $response = $this->rcon->command('players');
-            $onlinePlayers = $this->parsePlayers($response);
-        } catch (\Throwable) {
-            // Server offline
-        }
-
-        $onlineNames = array_column($onlinePlayers, 'name');
+        $onlineNames = $this->onlinePlayers->getOnlineUsernames();
+        $onlinePlayers = array_map(fn ($name) => ['name' => $name], $onlineNames);
 
         $registeredUsers = User::query()
             ->select('id', 'username', 'role', 'created_at')

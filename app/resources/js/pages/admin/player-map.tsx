@@ -1,9 +1,27 @@
 import { Head, router, usePoll } from '@inertiajs/react';
-import { Circle, Loader2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { Ban, Circle, Loader2, ShieldCheck, UserX } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import PzMap from '@/components/pz-map';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import type { MapConfig, PlayerMarker } from '@/types/server';
@@ -37,6 +55,15 @@ const statusDotColor: Record<PlayerMarker['status'], string> = {
 export default function PlayerMap({ markers, mapConfig, hasTiles, tileProgress }: Props) {
     usePoll(5000, { only: ['markers', 'hasTiles', 'tileProgress'] });
 
+    const [kickTarget, setKickTarget] = useState<string | null>(null);
+    const [banTarget, setBanTarget] = useState<string | null>(null);
+    const [accessTarget, setAccessTarget] = useState<string | null>(null);
+    const [reason, setReason] = useState('');
+    const [accessLevel, setAccessLevel] = useState('none');
+    const [loading, setLoading] = useState(false);
+
+    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+
     const counts = useMemo(() => {
         const online = markers.filter((m) => m.status === 'online').length;
         const offline = markers.filter((m) => m.status === 'offline').length;
@@ -44,8 +71,37 @@ export default function PlayerMap({ markers, mapConfig, hasTiles, tileProgress }
         return { online, offline, dead, total: markers.length };
     }, [markers]);
 
-    function handleMarkerClick(marker: PlayerMarker) {
-        router.visit('/admin/players');
+    function handleAction(url: string, data: Record<string, unknown>, onDone: () => void) {
+        setLoading(true);
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            body: JSON.stringify(data),
+        }).finally(() => {
+            setLoading(false);
+            onDone();
+            router.reload({ only: ['markers'] });
+        });
+    }
+
+    function handleMarkerAction(marker: PlayerMarker, action: string) {
+        switch (action) {
+            case 'kick':
+                setReason('');
+                setKickTarget(marker.username);
+                break;
+            case 'ban':
+                setReason('');
+                setBanTarget(marker.username);
+                break;
+            case 'access':
+                setAccessLevel('none');
+                setAccessTarget(marker.username);
+                break;
+            case 'inventory':
+                router.visit(`/admin/players/${marker.username}/inventory`);
+                break;
+        }
     }
 
     return (
@@ -77,7 +133,7 @@ export default function PlayerMap({ markers, mapConfig, hasTiles, tileProgress }
                     </div>
                 </div>
 
-                <Card className="flex-1">
+                <Card className="isolate flex-1">
                     <CardContent className="relative h-[500px] p-0 lg:h-[600px]">
                         {!hasTiles && tileProgress?.generating && (
                             <div className="absolute top-2 left-1/2 z-[1000] w-72 -translate-x-1/2 rounded-lg border bg-background/90 px-4 py-3 shadow-sm backdrop-blur-sm">
@@ -111,7 +167,7 @@ export default function PlayerMap({ markers, mapConfig, hasTiles, tileProgress }
                             markers={markers}
                             mapConfig={mapConfig}
                             hasTiles={hasTiles}
-                            onMarkerClick={handleMarkerClick}
+                            onMarkerAction={handleMarkerAction}
                             className="rounded-xl"
                         />
                     </CardContent>
@@ -143,6 +199,111 @@ export default function PlayerMap({ markers, mapConfig, hasTiles, tileProgress }
                     </Card>
                 )}
             </div>
+
+            {/* Kick Dialog */}
+            <Dialog open={kickTarget !== null} onOpenChange={() => setKickTarget(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Kick {kickTarget}</DialogTitle>
+                        <DialogDescription>This player will be disconnected from the server.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label htmlFor="map-kick-reason">Reason (optional)</Label>
+                        <Input
+                            id="map-kick-reason"
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder="Reason for kick..."
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setKickTarget(null)}>Cancel</Button>
+                        <Button
+                            disabled={loading}
+                            onClick={() =>
+                                handleAction(`/admin/players/${kickTarget}/kick`, { reason }, () => setKickTarget(null))
+                            }
+                        >
+                            <UserX className="mr-1.5 size-3.5" />
+                            Kick Player
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Ban Dialog */}
+            <Dialog open={banTarget !== null} onOpenChange={() => setBanTarget(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Ban {banTarget}</DialogTitle>
+                        <DialogDescription>This player will be permanently banned from the server.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label htmlFor="map-ban-reason">Reason (optional)</Label>
+                        <Input
+                            id="map-ban-reason"
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder="Reason for ban..."
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setBanTarget(null)}>Cancel</Button>
+                        <Button
+                            variant="destructive"
+                            disabled={loading}
+                            onClick={() =>
+                                handleAction(`/admin/players/${banTarget}/ban`, { reason }, () => setBanTarget(null))
+                            }
+                        >
+                            <Ban className="mr-1.5 size-3.5" />
+                            Ban Player
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Access Level Dialog */}
+            <Dialog open={accessTarget !== null} onOpenChange={() => setAccessTarget(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Set Access Level for {accessTarget}</DialogTitle>
+                        <DialogDescription>Change the player's server access level.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label>Access Level</Label>
+                        <Select value={accessLevel} onValueChange={setAccessLevel}>
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="moderator">Moderator</SelectItem>
+                                <SelectItem value="overseer">Overseer</SelectItem>
+                                <SelectItem value="gm">GM</SelectItem>
+                                <SelectItem value="observer">Observer</SelectItem>
+                                <SelectItem value="none">None</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setAccessTarget(null)}>Cancel</Button>
+                        <Button
+                            disabled={loading}
+                            onClick={() =>
+                                handleAction(
+                                    `/admin/players/${accessTarget}/access`,
+                                    { level: accessLevel },
+                                    () => setAccessTarget(null),
+                                )
+                            }
+                        >
+                            <ShieldCheck className="mr-1.5 size-3.5" />
+                            Set Access
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

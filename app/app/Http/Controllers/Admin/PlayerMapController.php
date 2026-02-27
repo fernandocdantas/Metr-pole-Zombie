@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\OnlinePlayersReader;
 use App\Services\PlayerPositionReader;
 use App\Services\PlayersDbReader;
 use Illuminate\Http\Response;
@@ -15,6 +16,7 @@ class PlayerMapController extends Controller
     public function __construct(
         private readonly PlayersDbReader $playersDb,
         private readonly PlayerPositionReader $positionReader,
+        private readonly OnlinePlayersReader $onlinePlayers,
     ) {}
 
     public function __invoke(): InertiaResponse
@@ -22,13 +24,14 @@ class PlayerMapController extends Controller
         $dbPlayers = $this->playersDb->getAllPlayerPositions();
         $liveData = $this->positionReader->getLivePositions();
 
-        $onlineUsernames = [];
+        // Use OnlinePlayersReader for reliable online detection (log → RCON → Lua)
+        $onlineUsernames = $this->onlinePlayers->getOnlineUsernames();
+
         $livePositions = [];
 
         if ($liveData !== null && ! empty($liveData['players'])) {
             foreach ($liveData['players'] as $player) {
                 $username = $player['username'] ?? '';
-                $onlineUsernames[] = $username;
                 $livePositions[$username] = $player;
             }
         }
@@ -50,6 +53,16 @@ class PlayerMapController extends Controller
                     'y' => (float) $live['y'],
                     'z' => (int) ($live['z'] ?? 0),
                     'status' => $isDead ? 'dead' : 'online',
+                    'is_online' => true,
+                ];
+            } elseif ($isOnline) {
+                $markers[] = [
+                    'username' => $username,
+                    'name' => $player['name'],
+                    'x' => $player['x'],
+                    'y' => $player['y'],
+                    'z' => $player['z'],
+                    'status' => $player['is_dead'] ? 'dead' : 'online',
                     'is_online' => true,
                 ];
             } else {

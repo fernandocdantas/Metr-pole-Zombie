@@ -5,6 +5,7 @@ use App\Models\Backup;
 use App\Models\User;
 use App\Services\BackupManager;
 use App\Services\ModManager;
+use App\Services\OnlinePlayersReader;
 use App\Services\PlayerPositionReader;
 use App\Services\PlayersDbReader;
 use App\Services\RconClient;
@@ -41,6 +42,11 @@ function mockAdminRconOffline(): void
     $rcon->shouldReceive('connect')->andThrow(new RuntimeException('Connection refused'));
 
     app()->instance(RconClient::class, $rcon);
+
+    $onlinePlayers = Mockery::mock(OnlinePlayersReader::class);
+    $onlinePlayers->shouldReceive('getOnlineUsernames')->andReturn([]);
+
+    app()->instance(OnlinePlayersReader::class, $onlinePlayers);
 }
 
 function mockAdminModManager(array $mods = []): void
