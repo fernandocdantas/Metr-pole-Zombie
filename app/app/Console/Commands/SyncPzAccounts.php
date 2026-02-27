@@ -101,7 +101,42 @@ class SyncPzAccounts extends Command
             ]);
         }
 
-        $this->info("Sync complete: {$created} created, {$synced} existing, {$passwordUpdated} passwords updated.");
+        $this->info("Whitelist sync: {$created} created, {$synced} existing, {$passwordUpdated} passwords updated.");
+
+        // Second pass: sync players from players.db (networkPlayers table)
+        $playersCreated = 0;
+
+        try {
+            $networkPlayers = DB::connection('pz_players')
+                ->table('networkPlayers')
+                ->select('username', 'name')
+                ->get();
+
+            foreach ($networkPlayers as $player) {
+                $username = $player->username;
+
+                if (User::where('username', $username)->exists()) {
+                    continue;
+                }
+
+                User::create([
+                    'username' => $username,
+                    'name' => $player->name ?: $username,
+                    'password' => Hash::make(bin2hex(random_bytes(16))),
+                    'role' => UserRole::Player,
+                ]);
+
+                $playersCreated++;
+
+                Log::info('Auto-created web user from networkPlayers', [
+                    'username' => $username,
+                ]);
+            }
+
+            $this->info("Network players sync: {$playersCreated} new players discovered.");
+        } catch (\Exception $e) {
+            $this->warn('Could not read players.db: '.$e->getMessage());
+        }
 
         return self::SUCCESS;
     }

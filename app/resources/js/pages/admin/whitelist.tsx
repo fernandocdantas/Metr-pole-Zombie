@@ -1,7 +1,8 @@
 import { Head, router } from '@inertiajs/react';
-import { Plus, RefreshCw, Shield, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, Shield, ShieldOff } from 'lucide-react';
 import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -16,9 +17,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { BreadcrumbItem } from '@/types';
 
-type WhitelistEntry = {
+type PlayerEntry = {
     username: string;
-    password_hash: string;
+    name: string;
+    character_name: string | null;
+    whitelisted: boolean;
+    role: string;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -26,15 +30,25 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Whitelist', href: '/admin/whitelist' },
 ];
 
-export default function Whitelist({ entries }: { entries: WhitelistEntry[] }) {
+const roleBadgeVariant: Record<string, 'default' | 'secondary' | 'outline'> = {
+    super_admin: 'default',
+    admin: 'default',
+    moderator: 'secondary',
+    player: 'outline',
+};
+
+export default function Whitelist({ players }: { players: PlayerEntry[] }) {
     const [showAdd, setShowAdd] = useState(false);
-    const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+    const [passwordTarget, setPasswordTarget] = useState<string | null>(null);
+    const [removeTarget, setRemoveTarget] = useState<string | null>(null);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(false);
 
     const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+
+    const whitelistedCount = players.filter((p) => p.whitelisted).length;
 
     function addUser() {
         setLoading(true);
@@ -47,19 +61,44 @@ export default function Whitelist({ entries }: { entries: WhitelistEntry[] }) {
             setShowAdd(false);
             setUsername('');
             setPassword('');
-            router.reload({ only: ['entries'] });
+            router.reload({ only: ['players'] });
         });
     }
 
-    function removeUser(name: string) {
+    function toggleWhitelist(target: string, isWhitelisted: boolean) {
+        if (isWhitelisted) {
+            setRemoveTarget(target);
+        } else {
+            setPasswordTarget(target);
+        }
+    }
+
+    function confirmAddToWhitelist() {
+        if (!passwordTarget || !password) return;
         setLoading(true);
-        fetch(`/admin/whitelist/${name}`, {
-            method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': csrfToken },
+        fetch(`/admin/whitelist/${passwordTarget}/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            body: JSON.stringify({ password }),
         }).finally(() => {
             setLoading(false);
-            setDeleteTarget(null);
-            router.reload({ only: ['entries'] });
+            setPasswordTarget(null);
+            setPassword('');
+            router.reload({ only: ['players'] });
+        });
+    }
+
+    function confirmRemoveFromWhitelist() {
+        if (!removeTarget) return;
+        setLoading(true);
+        fetch(`/admin/whitelist/${removeTarget}/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            body: JSON.stringify({}),
+        }).finally(() => {
+            setLoading(false);
+            setRemoveTarget(null);
+            router.reload({ only: ['players'] });
         });
     }
 
@@ -70,7 +109,7 @@ export default function Whitelist({ entries }: { entries: WhitelistEntry[] }) {
             headers: { 'X-CSRF-TOKEN': csrfToken },
         }).finally(() => {
             setSyncing(false);
-            router.reload({ only: ['entries'] });
+            router.reload({ only: ['players'] });
         });
     }
 
@@ -82,7 +121,7 @@ export default function Whitelist({ entries }: { entries: WhitelistEntry[] }) {
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Whitelist Management</h1>
                         <p className="text-muted-foreground">
-                            {entries.length} user{entries.length !== 1 ? 's' : ''} whitelisted
+                            {whitelistedCount} of {players.length} player{players.length !== 1 ? 's' : ''} whitelisted
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -101,46 +140,74 @@ export default function Whitelist({ entries }: { entries: WhitelistEntry[] }) {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Shield className="size-5" />
-                            Whitelisted Users
+                            All Players
                         </CardTitle>
                         <CardDescription>
-                            Users who can join when the server has whitelist enabled (Open=false)
+                            All known players. Toggle whitelist to control who can join when the server requires whitelist (Open=false).
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {entries.length > 0 ? (
+                        {players.length > 0 ? (
                             <div className="space-y-2">
-                                {entries.map((entry) => (
+                                {players.map((player) => (
                                     <div
-                                        key={entry.username}
+                                        key={player.username}
                                         className="flex items-center justify-between rounded-lg border border-border/50 px-4 py-3"
                                     >
-                                        <span className="font-medium">{entry.username}</span>
+                                        <div className="flex items-center gap-3">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium">{player.username}</span>
+                                                    <Badge variant={roleBadgeVariant[player.role] ?? 'outline'}>
+                                                        {player.role}
+                                                    </Badge>
+                                                    {player.whitelisted && (
+                                                        <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                                                            Whitelisted
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                {player.character_name && player.character_name !== player.username && (
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Character: {player.character_name}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
                                         <Button
-                                            variant="ghost"
+                                            variant={player.whitelisted ? 'outline' : 'default'}
                                             size="sm"
-                                            className="text-destructive hover:text-destructive"
-                                            onClick={() => setDeleteTarget(entry.username)}
+                                            onClick={() => toggleWhitelist(player.username, player.whitelisted)}
                                         >
-                                            <Trash2 className="size-4" />
+                                            {player.whitelisted ? (
+                                                <>
+                                                    <ShieldOff className="mr-1.5 size-4" />
+                                                    Remove
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Shield className="mr-1.5 size-4" />
+                                                    Whitelist
+                                                </>
+                                            )}
                                         </Button>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <p className="py-8 text-center text-muted-foreground">No users whitelisted</p>
+                            <p className="py-8 text-center text-muted-foreground">No players found. Run account sync to discover players.</p>
                         )}
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Add User Dialog */}
+            {/* Add New User Dialog */}
             <Dialog open={showAdd} onOpenChange={setShowAdd}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Add User to Whitelist</DialogTitle>
                         <DialogDescription>
-                            Create PZ credentials for the user. They will use these to join the server.
+                            Create PZ credentials for a new user. They will use these to join the server.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
@@ -173,22 +240,50 @@ export default function Whitelist({ entries }: { entries: WhitelistEntry[] }) {
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirmation */}
-            <Dialog open={deleteTarget !== null} onOpenChange={() => setDeleteTarget(null)}>
+            {/* Password Dialog for Whitelisting */}
+            <Dialog open={passwordTarget !== null} onOpenChange={() => { setPasswordTarget(null); setPassword(''); }}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Remove User</DialogTitle>
+                        <DialogTitle>Set PZ Password</DialogTitle>
                         <DialogDescription>
-                            Remove <strong>{deleteTarget}</strong> from the whitelist?
+                            Set a password for <strong>{passwordTarget}</strong> to add them to the PZ whitelist.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label htmlFor="toggle-password">Password</Label>
+                        <Input
+                            id="toggle-password"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="PZ password"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => { setPasswordTarget(null); setPassword(''); }}>Cancel</Button>
+                        <Button disabled={loading || !password} onClick={confirmAddToWhitelist}>
+                            Add to Whitelist
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Confirm Remove Dialog */}
+            <Dialog open={removeTarget !== null} onOpenChange={() => setRemoveTarget(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Remove from Whitelist</DialogTitle>
+                        <DialogDescription>
+                            Remove <strong>{removeTarget}</strong> from the whitelist?
                             They will no longer be able to join if the server requires whitelist.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+                        <Button variant="outline" onClick={() => setRemoveTarget(null)}>Cancel</Button>
                         <Button
                             variant="destructive"
                             disabled={loading}
-                            onClick={() => deleteTarget && removeUser(deleteTarget)}
+                            onClick={confirmRemoveFromWhitelist}
                         >
                             Remove
                         </Button>

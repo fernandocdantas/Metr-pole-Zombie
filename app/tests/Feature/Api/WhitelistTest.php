@@ -25,7 +25,10 @@ function setupPzSqlite(): string
     DB::connection('pz_sqlite')->statement('
         CREATE TABLE IF NOT EXISTS whitelist (
             username TEXT PRIMARY KEY,
-            password TEXT
+            password TEXT,
+            world TEXT DEFAULT NULL,
+            role INTEGER DEFAULT 2,
+            authType INTEGER DEFAULT 1
         )
     ');
 

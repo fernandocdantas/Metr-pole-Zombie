@@ -31,7 +31,10 @@ function setupTestPzSqlite(): string
     DB::connection('pz_sqlite')->statement('
         CREATE TABLE IF NOT EXISTS whitelist (
             username TEXT PRIMARY KEY,
-            password TEXT
+            password TEXT,
+            world TEXT DEFAULT NULL,
+            role INTEGER DEFAULT 2,
+            authType INTEGER DEFAULT 1
         )
     ');
 
@@ -274,6 +277,9 @@ describe('Player portal', function () {
 
 describe('PZ account sync command', function () {
     it('fails gracefully when SQLite is unavailable', function () {
+        config(['database.connections.pz_sqlite.database' => '/nonexistent/path/ZomboidServer.db']);
+        DB::purge('pz_sqlite');
+
         $this->artisan('pz:sync-accounts')
             ->assertFailed();
     });

@@ -385,7 +385,7 @@ it('renders the whitelist page', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('admin/whitelist')
-        ->has('entries', 1)
+        ->has('players')
     );
 });
 

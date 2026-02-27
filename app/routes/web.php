@@ -58,6 +58,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         Route::get('whitelist', [Admin\WhitelistController::class, 'index'])->name('whitelist');
         Route::post('whitelist', [Admin\WhitelistController::class, 'store'])->name('whitelist.store');
         Route::delete('whitelist/{username}', [Admin\WhitelistController::class, 'destroy'])->name('whitelist.destroy');
+        Route::post('whitelist/{username}/toggle', [Admin\WhitelistController::class, 'toggle'])->name('whitelist.toggle');
         Route::post('whitelist/sync', [Admin\WhitelistController::class, 'sync'])->name('whitelist.sync');
 
         // Audit Log

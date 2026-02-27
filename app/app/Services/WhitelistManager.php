@@ -29,6 +29,8 @@ class WhitelistManager
 
     /**
      * Add a user to PZ's whitelist SQLite database.
+     *
+     * PZ expects bcrypt-hashed password, world name, role, and authType fields.
      */
     public function add(string $username, string $password): bool
     {
@@ -36,15 +38,20 @@ class WhitelistManager
             return false;
         }
 
-        // PZ stores passwords as plain text in its SQLite DB
+        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+        $world = config('zomboid.server_name', 'ZomboidServer');
+
         DB::connection('pz_sqlite')
             ->table('whitelist')
             ->insert([
                 'username' => $username,
-                'password' => $password,
+                'password' => $hashedPassword,
+                'world' => $world,
+                'role' => 2,
+                'authType' => 1,
             ]);
 
-        // Track in PostgreSQL
+        // Track in PostgreSQL (store plain text for sync purposes)
         WhitelistEntry::create([
             'pz_username' => $username,
             'pz_password_hash' => $password,

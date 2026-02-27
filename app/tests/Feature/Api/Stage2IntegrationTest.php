@@ -96,7 +96,10 @@ it('completes full whitelist add → status → remove cycle', function () {
     DB::connection('pz_sqlite')->statement('
         CREATE TABLE IF NOT EXISTS whitelist (
             username TEXT PRIMARY KEY,
-            password TEXT
+            password TEXT,
+            world TEXT DEFAULT NULL,
+            role INTEGER DEFAULT 2,
+            authType INTEGER DEFAULT 1
         )
     ');
 
@@ -172,7 +175,7 @@ it('maintains complete audit trail across all stage 2 features', function () {
     config(['database.connections.pz_sqlite.database' => $dbPath]);
     DB::purge('pz_sqlite');
     DB::connection('pz_sqlite')->statement('
-        CREATE TABLE IF NOT EXISTS whitelist (username TEXT PRIMARY KEY, password TEXT)
+        CREATE TABLE IF NOT EXISTS whitelist (username TEXT PRIMARY KEY, password TEXT, world TEXT DEFAULT NULL, role INTEGER DEFAULT 2, authType INTEGER DEFAULT 1)
     ');
 
     $mockManager = Mockery::mock(BackupManager::class);
