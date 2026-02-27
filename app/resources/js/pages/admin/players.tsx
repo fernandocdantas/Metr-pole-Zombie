@@ -1,5 +1,5 @@
-import { Head, router, usePoll } from '@inertiajs/react';
-import { Ban, Circle, ShieldCheck, UserX } from 'lucide-react';
+import { Head, Link, router, usePoll } from '@inertiajs/react';
+import { Backpack, Ban, Circle, ShieldCheck, UserX } from 'lucide-react';
 import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
@@ -107,6 +107,12 @@ export default function Players({ players, registeredUsers }: { players: Player[
                                             <span className="font-medium">{player.name}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
+                                            <Button variant="outline" size="sm" asChild>
+                                                <Link href={`/admin/players/${player.name}/inventory`}>
+                                                    <Backpack className="mr-1.5 size-3.5" />
+                                                    Inventory
+                                                </Link>
+                                            </Button>
                                             <Button
                                                 variant="outline"
                                                 size="sm"
@@ -171,9 +177,16 @@ export default function Players({ players, registeredUsers }: { players: Player[
                                                 {user.role.replace('_', ' ')}
                                             </Badge>
                                         </div>
-                                        <span className="text-sm text-muted-foreground">
-                                            Joined {new Date(user.createdAt).toLocaleDateString()}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm text-muted-foreground">
+                                                Joined {new Date(user.createdAt).toLocaleDateString()}
+                                            </span>
+                                            <Button variant="ghost" size="sm" asChild>
+                                                <Link href={`/admin/players/${user.username}/inventory`}>
+                                                    <Backpack className="size-3.5" />
+                                                </Link>
+                                            </Button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>

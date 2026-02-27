@@ -80,3 +80,47 @@ export type MapConfig = {
     center: { x: number; y: number };
     dzi: DziInfo | null;
 };
+
+export type InventoryItem = {
+    full_type: string;
+    name: string;
+    category: string;
+    count: number;
+    condition: number | null;
+    equipped: boolean;
+    container: string;
+    icon: string;
+};
+
+export type InventorySnapshot = {
+    username: string;
+    timestamp: string;
+    items: InventoryItem[];
+    weight: number;
+    max_weight: number;
+};
+
+export type ItemCatalogEntry = {
+    full_type: string;
+    name: string;
+    category: string;
+    icon_name: string;
+    icon: string;
+};
+
+export type DeliveryEntry = {
+    id: string;
+    action: 'give' | 'remove';
+    username: string;
+    item_type: string;
+    count: number;
+    status: string;
+    created_at: string;
+};
+
+export type DeliveryResult = {
+    id: string;
+    status: 'delivered' | 'failed' | 'partial';
+    processed_at: string;
+    message: string | null;
+};
