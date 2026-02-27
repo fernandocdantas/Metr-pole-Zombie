@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { Package, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { fetchAction } from '@/lib/fetch-action';
 import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,34 +31,29 @@ export default function Mods({ mods }: { mods: ModEntry[] }) {
     const [mapFolder, setMapFolder] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
-
-    function addMod() {
+    async function addMod() {
         setLoading(true);
-        fetch('/admin/mods', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-            body: JSON.stringify({ workshop_id: workshopId, mod_id: modId, map_folder: mapFolder || null }),
-        }).finally(() => {
-            setLoading(false);
-            setShowAdd(false);
-            setWorkshopId('');
-            setModId('');
-            setMapFolder('');
-            router.reload({ only: ['mods'] });
+        await fetchAction('/admin/mods', {
+            data: { workshop_id: workshopId, mod_id: modId, map_folder: mapFolder || null },
+            successMessage: `Added mod ${modId}`,
         });
+        setLoading(false);
+        setShowAdd(false);
+        setWorkshopId('');
+        setModId('');
+        setMapFolder('');
+        router.reload({ only: ['mods'] });
     }
 
-    function removeMod(mod: ModEntry) {
+    async function removeMod(mod: ModEntry) {
         setLoading(true);
-        fetch(`/admin/mods/${mod.workshop_id}`, {
+        await fetchAction(`/admin/mods/${mod.workshop_id}`, {
             method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': csrfToken },
-        }).finally(() => {
-            setLoading(false);
-            setDeleteTarget(null);
-            router.reload({ only: ['mods'] });
+            successMessage: `Removed mod ${mod.mod_id}`,
         });
+        setLoading(false);
+        setDeleteTarget(null);
+        router.reload({ only: ['mods'] });
     }
 
     return (

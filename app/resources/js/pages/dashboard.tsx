@@ -5,7 +5,6 @@ import {
     HardDrive,
     Map,
     Play,
-    Power,
     RefreshCw,
     Save,
     ScrollText,
@@ -17,6 +16,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { fetchAction } from '@/lib/fetch-action';
 import type { BreadcrumbItem, DashboardData } from '@/types';
 import { dashboard } from '@/routes';
 
@@ -36,17 +36,11 @@ export default function Dashboard({
 
     usePoll(5000, { only: ['server'] });
 
-    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
-
-    function serverAction(action: string) {
+    async function serverAction(action: string) {
         setActionLoading(action);
-        fetch(`/admin/server/${action}`, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': csrfToken },
-        }).finally(() => {
-            setActionLoading(null);
-            setTimeout(() => router.reload({ only: ['server'] }), 2000);
-        });
+        await fetchAction(`/admin/server/${action}`);
+        setActionLoading(null);
+        setTimeout(() => router.reload({ only: ['server'] }), 2000);
     }
 
     return (

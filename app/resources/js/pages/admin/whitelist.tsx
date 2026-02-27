@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { Plus, RefreshCw, Shield, ShieldOff } from 'lucide-react';
 import { useState } from 'react';
+import { fetchAction } from '@/lib/fetch-action';
 import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,23 +47,19 @@ export default function Whitelist({ players }: { players: PlayerEntry[] }) {
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(false);
 
-    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
-
     const whitelistedCount = players.filter((p) => p.whitelisted).length;
 
-    function addUser() {
+    async function addUser() {
         setLoading(true);
-        fetch('/admin/whitelist', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-            body: JSON.stringify({ username, password }),
-        }).finally(() => {
-            setLoading(false);
-            setShowAdd(false);
-            setUsername('');
-            setPassword('');
-            router.reload({ only: ['players'] });
+        await fetchAction('/admin/whitelist', {
+            data: { username, password },
+            successMessage: `Added ${username} to whitelist`,
         });
+        setLoading(false);
+        setShowAdd(false);
+        setUsername('');
+        setPassword('');
+        router.reload({ only: ['players'] });
     }
 
     function toggleWhitelist(target: string, isWhitelisted: boolean) {
@@ -73,44 +70,38 @@ export default function Whitelist({ players }: { players: PlayerEntry[] }) {
         }
     }
 
-    function confirmAddToWhitelist() {
+    async function confirmAddToWhitelist() {
         if (!passwordTarget || !password) return;
         setLoading(true);
-        fetch(`/admin/whitelist/${passwordTarget}/toggle`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-            body: JSON.stringify({ password }),
-        }).finally(() => {
-            setLoading(false);
-            setPasswordTarget(null);
-            setPassword('');
-            router.reload({ only: ['players'] });
+        await fetchAction(`/admin/whitelist/${passwordTarget}/toggle`, {
+            data: { password },
+            successMessage: `Whitelisted ${passwordTarget}`,
         });
+        setLoading(false);
+        setPasswordTarget(null);
+        setPassword('');
+        router.reload({ only: ['players'] });
     }
 
-    function confirmRemoveFromWhitelist() {
+    async function confirmRemoveFromWhitelist() {
         if (!removeTarget) return;
         setLoading(true);
-        fetch(`/admin/whitelist/${removeTarget}/toggle`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-            body: JSON.stringify({}),
-        }).finally(() => {
-            setLoading(false);
-            setRemoveTarget(null);
-            router.reload({ only: ['players'] });
+        await fetchAction(`/admin/whitelist/${removeTarget}/toggle`, {
+            data: {},
+            successMessage: `Removed ${removeTarget} from whitelist`,
         });
+        setLoading(false);
+        setRemoveTarget(null);
+        router.reload({ only: ['players'] });
     }
 
-    function syncWhitelist() {
+    async function syncWhitelist() {
         setSyncing(true);
-        fetch('/admin/whitelist/sync', {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': csrfToken },
-        }).finally(() => {
-            setSyncing(false);
-            router.reload({ only: ['players'] });
+        await fetchAction('/admin/whitelist/sync', {
+            successMessage: 'Whitelist synced',
         });
+        setSyncing(false);
+        router.reload({ only: ['players'] });
     }
 
     return (

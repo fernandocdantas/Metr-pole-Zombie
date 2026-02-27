@@ -12,6 +12,7 @@ import {
     Weight,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { fetchAction } from '@/lib/fetch-action';
 import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -156,29 +157,17 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
             .slice(0, 50);
     }, [catalog, giveSearch]);
 
-    function postAction(url: string, data: Record<string, unknown>, onDone: () => void) {
+    async function postAction(url: string, data: Record<string, unknown>, onDone: () => void) {
         setLoading(true);
         setError(null);
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN':
-                    document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
-            },
-            body: JSON.stringify(data),
-        })
-            .then((res) => {
-                if (!res.ok) throw new Error(`Request failed (${res.status})`);
-                onDone();
-            })
-            .catch((err) => {
-                setError(err instanceof Error ? err.message : 'Action failed');
-            })
-            .finally(() => {
-                setLoading(false);
-                router.reload({ only: ['inventory', 'deliveries'] });
-            });
+        const result = await fetchAction(url, { data });
+        if (result) {
+            onDone();
+        } else {
+            setError('Action failed');
+        }
+        setLoading(false);
+        router.reload({ only: ['inventory', 'deliveries'] });
     }
 
     function handleGive() {

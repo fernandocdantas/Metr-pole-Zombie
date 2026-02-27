@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
-import { Archive, Download, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { Archive, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { fetchAction } from '@/lib/fetch-action';
 import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -44,45 +45,38 @@ export default function Backups({ backups }: { backups: PaginatedBackups }) {
     const [notes, setNotes] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
-
-    function createBackup() {
+    async function createBackup() {
         setLoading(true);
-        fetch('/admin/backups', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-            body: JSON.stringify({ notes: notes || null }),
-        }).finally(() => {
-            setLoading(false);
-            setShowCreate(false);
-            setNotes('');
-            router.reload();
+        await fetchAction('/admin/backups', {
+            data: { notes: notes || null },
+            successMessage: 'Backup created',
         });
+        setLoading(false);
+        setShowCreate(false);
+        setNotes('');
+        router.reload();
     }
 
-    function rollback(backup: BackupEntry) {
+    async function rollback(backup: BackupEntry) {
         setLoading(true);
-        fetch(`/admin/backups/${backup.id}/rollback`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-            body: JSON.stringify({ confirm: true }),
-        }).finally(() => {
-            setLoading(false);
-            setRollbackTarget(null);
-            router.reload();
+        await fetchAction(`/admin/backups/${backup.id}/rollback`, {
+            data: { confirm: true },
+            successMessage: `Rolled back to ${backup.filename}`,
         });
+        setLoading(false);
+        setRollbackTarget(null);
+        router.reload();
     }
 
-    function deleteBackup(backup: BackupEntry) {
+    async function deleteBackup(backup: BackupEntry) {
         setLoading(true);
-        fetch(`/admin/backups/${backup.id}`, {
+        await fetchAction(`/admin/backups/${backup.id}`, {
             method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': csrfToken },
-        }).finally(() => {
-            setLoading(false);
-            setDeleteTarget(null);
-            router.reload();
+            successMessage: 'Backup deleted',
         });
+        setLoading(false);
+        setDeleteTarget(null);
+        router.reload();
     }
 
     return (

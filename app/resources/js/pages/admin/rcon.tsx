@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 import { Send, Terminal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -63,7 +64,9 @@ export default function Rcon() {
                 }
             })
             .catch((err) => {
-                addEntry('error', `Request failed: ${err.message}`);
+                const msg = `Request failed: ${err.message}`;
+                addEntry('error', msg);
+                toast.error(msg);
             })
             .finally(() => setLoading(false));
     }

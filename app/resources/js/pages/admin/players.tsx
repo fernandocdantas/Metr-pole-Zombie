@@ -1,6 +1,7 @@
 import { Head, Link, router, usePoll } from '@inertiajs/react';
 import { Backpack, Ban, Circle, ShieldCheck, UserX } from 'lucide-react';
 import { useState } from 'react';
+import { fetchAction } from '@/lib/fetch-action';
 import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -56,20 +57,12 @@ export default function Players({ players, registeredUsers }: { players: Player[
 
     usePoll(5000, { only: ['players', 'registeredUsers'] });
 
-    function handleAction(url: string, data: Record<string, unknown>, onDone: () => void) {
+    async function handleAction(url: string, data: Record<string, unknown>, onDone: () => void) {
         setLoading(true);
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
-            },
-            body: JSON.stringify(data),
-        }).finally(() => {
-            setLoading(false);
-            onDone();
-            router.reload({ only: ['players', 'registeredUsers'] });
-        });
+        await fetchAction(url, { data });
+        setLoading(false);
+        onDone();
+        router.reload({ only: ['players', 'registeredUsers'] });
     }
 
     return (

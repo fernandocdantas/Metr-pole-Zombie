@@ -1,0 +1,49 @@
+import { toast } from 'sonner';
+
+type FetchActionOptions = {
+    method?: string;
+    data?: Record<string, unknown>;
+    successMessage?: string;
+};
+
+/**
+ * Wrapper around fetch for admin actions with automatic toast feedback.
+ * Parses JSON response and shows success/error toasts.
+ * Returns the parsed JSON data on success, or null on failure.
+ */
+export async function fetchAction(
+    url: string,
+    options: FetchActionOptions = {},
+): Promise<Record<string, unknown> | null> {
+    const { method = 'POST', data, successMessage } = options;
+    const csrfToken =
+        document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+
+    const headers: Record<string, string> = { 'X-CSRF-TOKEN': csrfToken };
+    if (data) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    try {
+        const res = await fetch(url, {
+            method,
+            headers,
+            body: data ? JSON.stringify(data) : undefined,
+        });
+
+        const json = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+            toast.success(
+                successMessage || json.message || 'Action completed',
+            );
+            return json;
+        }
+
+        toast.error(json.error || json.message || `Request failed (${res.status})`);
+        return null;
+    } catch {
+        toast.error('Network error — could not reach the server');
+        return null;
+    }
+}

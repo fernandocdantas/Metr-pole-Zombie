@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { AlertTriangle, ChevronDown, Eye, EyeOff, Save, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { fetchAction } from '@/lib/fetch-action';
 import AppLayout from '@/layouts/app-layout';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -335,25 +336,17 @@ export default function Config({ server_config, sandbox_config }: ConfigProps) {
     const [saving, setSaving] = useState(false);
     const [search, setSearch] = useState('');
 
-    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
-
-    function saveConfig(url: string, settings: Record<string, string>) {
+    async function saveConfig(url: string, settings: Record<string, string>) {
         setSaving(true);
-        fetch(url, {
+        const result = await fetchAction(url, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-            },
-            body: JSON.stringify({ settings }),
-        })
-            .then((r) => r.json())
-            .then((data) => {
-                if (data.restart_required) {
-                    setRestartBanner(true);
-                }
-            })
-            .finally(() => setSaving(false));
+            data: { settings },
+            successMessage: 'Configuration saved',
+        });
+        if (result?.restart_required) {
+            setRestartBanner(true);
+        }
+        setSaving(false);
     }
 
     // Flatten sandbox config for display

@@ -2,6 +2,7 @@ import { Head, router, usePoll } from '@inertiajs/react';
 import { Ban, Circle, Loader2, ShieldCheck, UserX } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import PzMap from '@/components/pz-map';
+import { fetchAction } from '@/lib/fetch-action';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,8 +63,6 @@ export default function PlayerMap({ markers, mapConfig, hasTiles, tileProgress }
     const [accessLevel, setAccessLevel] = useState('none');
     const [loading, setLoading] = useState(false);
 
-    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
-
     const counts = useMemo(() => {
         const online = markers.filter((m) => m.status === 'online').length;
         const offline = markers.filter((m) => m.status === 'offline').length;
@@ -71,17 +70,12 @@ export default function PlayerMap({ markers, mapConfig, hasTiles, tileProgress }
         return { online, offline, dead, total: markers.length };
     }, [markers]);
 
-    function handleAction(url: string, data: Record<string, unknown>, onDone: () => void) {
+    async function handleAction(url: string, data: Record<string, unknown>, onDone: () => void) {
         setLoading(true);
-        fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-            body: JSON.stringify(data),
-        }).finally(() => {
-            setLoading(false);
-            onDone();
-            router.reload({ only: ['markers'] });
-        });
+        await fetchAction(url, { data });
+        setLoading(false);
+        onDone();
+        router.reload({ only: ['markers'] });
     }
 
     function handleMarkerAction(marker: PlayerMarker, action: string) {
