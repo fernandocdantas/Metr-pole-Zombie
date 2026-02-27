@@ -18,6 +18,8 @@ Schedule::command('pz:sync-accounts')->everyFiveMinutes();
 
 Schedule::command('zomboid:sync-player-stats')->everyTenMinutes();
 
+Schedule::command('zomboid:parse-game-events')->everyFiveMinutes();
+
 Schedule::command('zomboid:generate-map-tiles')
     ->everyThirtyMinutes()
     ->when(fn () => ! is_dir(config('zomboid.map.tiles_path').'/html/map_data/base/layer0_files'))

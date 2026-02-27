@@ -78,12 +78,23 @@ export type Leaderboard = {
     survival: PlayerStatEntry[];
 };
 
+export type GameEventEntry = {
+    id: number;
+    event_type: 'death' | 'pvp_kill' | 'craft' | 'connect' | 'disconnect';
+    player: string;
+    target: string | null;
+    details: Record<string, unknown> | null;
+    game_time: string | null;
+    created_at: string;
+};
+
 export type DashboardData = {
     server: ServerStatus;
     game_state: GameState | null;
     recent_audit: AuditEntry[];
     backup_summary: BackupSummary;
     leaderboard: Leaderboard;
+    game_events: GameEventEntry[];
 };
 
 export type StatusPageData = {

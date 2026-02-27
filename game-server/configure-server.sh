@@ -94,6 +94,25 @@ else
     echo "[configure-server] Set Mods=ZomboidManager"
 fi
 
+# Auto-register Log Extender mod (Workshop #1844524972) if not already present
+CURRENT_MODS=$(grep "^Mods=" "$INI_FILE" | sed 's/^Mods=//')
+CURRENT_WORKSHOP=$(grep "^WorkshopItems=" "$INI_FILE" | sed 's/^WorkshopItems=//')
+if [ -n "$CURRENT_MODS" ]; then
+    if ! echo "$CURRENT_MODS" | grep -q "LogExtender"; then
+        apply_setting "Mods" "${CURRENT_MODS};LogExtender" "$INI_FILE"
+        echo "[configure-server] Added LogExtender to Mods list"
+    fi
+fi
+if [ -n "$CURRENT_WORKSHOP" ]; then
+    if ! echo "$CURRENT_WORKSHOP" | grep -q "1844524972"; then
+        apply_setting "WorkshopItems" "${CURRENT_WORKSHOP};1844524972" "$INI_FILE"
+        echo "[configure-server] Added Log Extender workshop ID"
+    fi
+else
+    apply_setting "WorkshopItems" "1844524972" "$INI_FILE"
+    echo "[configure-server] Set WorkshopItems=1844524972"
+fi
+
 # Pre-create Lua bridge directories for inventory exports
 mkdir -p /home/steam/Zomboid/Lua/inventory
 echo "[configure-server] Lua bridge directories created"

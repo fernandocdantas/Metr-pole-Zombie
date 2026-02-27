@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Backup;
+use App\Models\GameEvent;
 use App\Services\DockerManager;
 use App\Services\GameStateReader;
 use App\Services\PlayerStatsService;
@@ -104,6 +105,20 @@ class DashboardController extends Controller
                 'kills' => $this->playerStatsService->getLeaderboard('zombie_kills', 5),
                 'survival' => $this->playerStatsService->getLeaderboard('hours_survived', 5),
             ]),
+            'game_events' => Inertia::defer(fn () => GameEvent::query()
+                ->orderByDesc('created_at')
+                ->limit(15)
+                ->get()
+                ->map(fn (GameEvent $event) => [
+                    'id' => $event->id,
+                    'event_type' => $event->event_type,
+                    'player' => $event->player,
+                    'target' => $event->target,
+                    'details' => $event->details,
+                    'game_time' => $event->game_time?->toIso8601String(),
+                    'created_at' => $event->created_at?->toIso8601String(),
+                ])
+                ->all()),
         ]);
     }
 

@@ -10,6 +10,7 @@ import {
     ScrollText,
     Square,
     Users,
+    Zap,
 } from 'lucide-react';
 import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
@@ -17,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ActivityFeed } from '@/components/activity-feed';
 import { GameStateWidget } from '@/components/game-state-widget';
 import { Leaderboard } from '@/components/leaderboard';
 import { fetchAction } from '@/lib/fetch-action';
@@ -36,6 +38,7 @@ export default function Dashboard({
     recent_audit,
     backup_summary,
     leaderboard,
+    game_events,
 }: DashboardData) {
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -311,6 +314,34 @@ export default function Dashboard({
                 }>
                     <Leaderboard data={leaderboard} />
                 </Deferred>
+
+                {/* Game Events */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Zap className="size-5" />
+                            Game Events
+                        </CardTitle>
+                        <CardDescription>Deaths, PvP, crafting, and connections</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Deferred data="game_events" fallback={
+                            <div className="space-y-2">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                    <div key={i} className="flex items-start gap-2.5">
+                                        <Skeleton className="mt-0.5 size-4 shrink-0 rounded" />
+                                        <div className="flex-1 space-y-1">
+                                            <Skeleton className="h-4 w-48" />
+                                            <Skeleton className="h-3 w-16" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        }>
+                            <ActivityFeed events={game_events ?? []} />
+                        </Deferred>
+                    </CardContent>
+                </Card>
             </div>
         </AppLayout>
     );
