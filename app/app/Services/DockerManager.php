@@ -55,6 +55,7 @@ class DockerManager
     {
         $response = $this->request('POST', "/containers/{$this->containerName}/stop", [
             'query' => ['t' => $timeout],
+            'timeout' => $timeout + 15,
         ]);
 
         return $response !== null;
@@ -64,6 +65,7 @@ class DockerManager
     {
         $response = $this->request('POST', "/containers/{$this->containerName}/restart", [
             'query' => ['t' => $timeout],
+            'timeout' => $timeout + 30,
         ]);
 
         return $response !== null;
@@ -102,7 +104,11 @@ class DockerManager
     private function request(string $method, string $path, array $options = []): ?array
     {
         try {
+            $timeout = $options['timeout'] ?? 30;
+
             $client = Http::baseUrl($this->baseUrl)
+                ->timeout($timeout)
+                ->connectTimeout(5)
                 ->withOptions([
                     'curl' => [
                         CURLOPT_UNIX_SOCKET_PATH => $this->socketPath,
