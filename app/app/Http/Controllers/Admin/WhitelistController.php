@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UpdateWhitelistSettingsRequest;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\ServerIniParser;
 use App\Services\WhitelistManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +19,7 @@ class WhitelistController extends Controller
     public function __construct(
         private readonly WhitelistManager $whitelistManager,
         private readonly AuditLogger $auditLogger,
+        private readonly ServerIniParser $iniParser,
     ) {}
 
     public function index(): Response
@@ -61,8 +64,56 @@ class WhitelistController extends Controller
             ->values()
             ->all();
 
+        $whitelistSettings = ['open' => true, 'auto_create_user_in_whitelist' => true];
+
+        try {
+            $ini = $this->iniParser->read(config('zomboid.paths.server_ini'));
+            $whitelistSettings['open'] = ($ini['Open'] ?? 'true') === 'true';
+            $whitelistSettings['auto_create_user_in_whitelist'] = ($ini['AutoCreateUserInWhiteList'] ?? 'true') === 'true';
+        } catch (\Throwable) {
+            // INI not available — use defaults
+        }
+
         return Inertia::render('admin/whitelist', [
             'players' => $players,
+            'whitelist_settings' => $whitelistSettings,
+        ]);
+    }
+
+    public function updateSettings(UpdateWhitelistSettingsRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+        $updates = [];
+
+        if (array_key_exists('open', $validated)) {
+            $updates['Open'] = $validated['open'] ? 'true' : 'false';
+        }
+
+        if (array_key_exists('auto_create_user_in_whitelist', $validated)) {
+            $updates['AutoCreateUserInWhiteList'] = $validated['auto_create_user_in_whitelist'] ? 'true' : 'false';
+        }
+
+        $path = config('zomboid.paths.server_ini');
+        $before = $this->iniParser->read($path);
+
+        $this->iniParser->write($path, $updates);
+
+        $after = $this->iniParser->read($path);
+
+        $this->auditLogger->log(
+            actor: $request->user()->name ?? 'admin',
+            action: 'whitelist.settings.update',
+            target: 'server.ini',
+            details: [
+                'before' => array_intersect_key($before, $updates),
+                'after' => array_intersect_key($after, $updates),
+            ],
+            ip: $request->ip(),
+        );
+
+        return response()->json([
+            'message' => 'Whitelist settings updated',
+            'restart_required' => true,
         ]);
     }
 

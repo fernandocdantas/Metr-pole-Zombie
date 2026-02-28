@@ -32,6 +32,12 @@ export const SERVER_INI_META: Record<string, SettingMeta> = {
         description: 'Allow new players to join. Set to false to only allow whitelisted players.',
         default: true,
     },
+    AutoCreateUserInWhiteList: {
+        type: 'boolean',
+        group: 'General',
+        description: 'Automatically store player credentials when they join. Required for web login sync.',
+        default: true,
+    },
     PauseEmpty: {
         type: 'boolean',
         group: 'General',

@@ -29,6 +29,7 @@ MaxPlayers=16
 Public=true
 PauseEmpty=true
 Open=true
+AutoCreateUserInWhiteList=true
 AutoSave=true
 SaveWorldEveryMinutes=15
 AdminPassword=changeme
@@ -65,6 +66,8 @@ apply_setting "Public"               "${PZ_PUBLIC_SERVER:-true}"    "$INI_FILE"
 apply_setting "PauseEmpty"           "${PZ_PAUSE_ON_EMPTY:-true}"   "$INI_FILE"
 apply_setting "SaveWorldEveryMinutes" "${PZ_AUTOSAVE_INTERVAL:-15}" "$INI_FILE"
 apply_setting "SteamVAC"             "${PZ_STEAM_VAC:-true}"        "$INI_FILE"
+apply_setting "Open"                 "${PZ_OPEN:-true}"             "$INI_FILE"
+apply_setting "AutoCreateUserInWhiteList" "${PZ_AUTO_CREATE_WHITELIST:-true}" "$INI_FILE"
 
 # Passwords
 apply_setting "Password"             "${PZ_SERVER_PASSWORD:-}"      "$INI_FILE"

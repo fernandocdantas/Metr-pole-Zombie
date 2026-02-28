@@ -22,6 +22,8 @@ services:
       SERVER_PASSWORD: ${PZ_SERVER_PASSWORD:-}
       STEAM_VAC: ${PZ_STEAM_VAC:-true}
       UDP_PORT: ${PZ_DIRECT_PORT:-16262}
+      # Note: Open and AutoCreateUserInWhiteList are not supported as env vars
+      # by this image. Set them via the web UI config page after first boot.
       USE_STEAM: "true"
       TZ: ${TZ:-Asia/Tbilisi}
     volumes:

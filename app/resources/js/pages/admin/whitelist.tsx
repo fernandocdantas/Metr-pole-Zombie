@@ -1,8 +1,9 @@
 import { Head, router } from '@inertiajs/react';
-import { Plus, RefreshCw, Shield, ShieldOff } from 'lucide-react';
+import { AlertTriangle, Plus, RefreshCw, Settings, Shield, ShieldOff } from 'lucide-react';
 import { useState } from 'react';
 import { fetchAction } from '@/lib/fetch-action';
 import AppLayout from '@/layouts/app-layout';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +17,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import type { BreadcrumbItem } from '@/types';
 
 type PlayerEntry = {
@@ -24,6 +27,11 @@ type PlayerEntry = {
     character_name: string | null;
     whitelisted: boolean;
     role: string;
+};
+
+type WhitelistSettings = {
+    open: boolean;
+    auto_create_user_in_whitelist: boolean;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -38,7 +46,7 @@ const roleBadgeVariant: Record<string, 'default' | 'secondary' | 'outline'> = {
     player: 'outline',
 };
 
-export default function Whitelist({ players }: { players: PlayerEntry[] }) {
+export default function Whitelist({ players, whitelist_settings }: { players: PlayerEntry[]; whitelist_settings: WhitelistSettings }) {
     const [showAdd, setShowAdd] = useState(false);
     const [passwordTarget, setPasswordTarget] = useState<string | null>(null);
     const [removeTarget, setRemoveTarget] = useState<string | null>(null);
@@ -46,6 +54,15 @@ export default function Whitelist({ players }: { players: PlayerEntry[] }) {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(false);
+
+    const [enforceWhitelist, setEnforceWhitelist] = useState(!whitelist_settings.open);
+    const [autoRegister, setAutoRegister] = useState(whitelist_settings.auto_create_user_in_whitelist);
+    const [savingSettings, setSavingSettings] = useState(false);
+    const [restartRequired, setRestartRequired] = useState(false);
+
+    const settingsDirty =
+        enforceWhitelist !== !whitelist_settings.open ||
+        autoRegister !== whitelist_settings.auto_create_user_in_whitelist;
 
     const whitelistedCount = players.filter((p) => p.whitelisted).length;
 
@@ -104,6 +121,23 @@ export default function Whitelist({ players }: { players: PlayerEntry[] }) {
         router.reload({ only: ['players'] });
     }
 
+    async function saveSettings() {
+        setSavingSettings(true);
+        const result = await fetchAction('/admin/whitelist/settings', {
+            method: 'PATCH',
+            data: {
+                open: !enforceWhitelist,
+                auto_create_user_in_whitelist: autoRegister,
+            },
+            successMessage: 'Whitelist settings updated',
+        });
+        setSavingSettings(false);
+        if (result?.restart_required) {
+            setRestartRequired(true);
+        }
+        router.reload({ only: ['whitelist_settings'] });
+    }
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Whitelist" />
@@ -126,6 +160,62 @@ export default function Whitelist({ players }: { players: PlayerEntry[] }) {
                         </Button>
                     </div>
                 </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Settings className="size-5" />
+                            Whitelist Settings
+                        </CardTitle>
+                        <CardDescription>
+                            Control how the server handles player access and credential storage.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {restartRequired && (
+                            <Alert variant="destructive">
+                                <AlertTriangle className="size-4" />
+                                <AlertDescription>
+                                    Settings saved. A server restart is required for changes to take effect.
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="enforce-whitelist">Whitelist Enforcement</Label>
+                                <p className="text-sm text-muted-foreground">
+                                    When enabled, only whitelisted players can join (Open=false).
+                                </p>
+                            </div>
+                            <Switch
+                                id="enforce-whitelist"
+                                checked={enforceWhitelist}
+                                onCheckedChange={setEnforceWhitelist}
+                            />
+                        </div>
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="auto-register">Auto-register Players</Label>
+                                <p className="text-sm text-muted-foreground">
+                                    Store player credentials when they join. Required for web login sync.
+                                </p>
+                            </div>
+                            <Switch
+                                id="auto-register"
+                                checked={autoRegister}
+                                onCheckedChange={setAutoRegister}
+                            />
+                        </div>
+                        {settingsDirty && (
+                            <div className="flex justify-end pt-2">
+                                <Button onClick={saveSettings} disabled={savingSettings}>
+                                    {savingSettings ? 'Saving...' : 'Save Settings'}
+                                </Button>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
                 <Card>
                     <CardHeader>

@@ -56,6 +56,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
         // Whitelist
         Route::get('whitelist', [Admin\WhitelistController::class, 'index'])->name('whitelist');
+        Route::patch('whitelist/settings', [Admin\WhitelistController::class, 'updateSettings'])->name('whitelist.settings');
         Route::post('whitelist', [Admin\WhitelistController::class, 'store'])->name('whitelist.store');
         Route::delete('whitelist/{username}', [Admin\WhitelistController::class, 'destroy'])->name('whitelist.destroy');
         Route::post('whitelist/{username}/toggle', [Admin\WhitelistController::class, 'toggle'])->name('whitelist.toggle');

@@ -4,6 +4,7 @@ use App\Enums\UserRole;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Models\WhitelistEntry;
+use App\Services\ServerIniParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -329,5 +330,109 @@ describe('NetworkPlayers sync in pz:sync-accounts', function () {
         $this->artisan('pz:sync-accounts')
             ->assertSuccessful()
             ->expectsOutputToContain('Could not read players.db');
+    });
+});
+
+// ── Whitelist settings ─────────────────────────────────────────────
+
+function createTempIni(array $settings = []): string
+{
+    $defaults = [
+        'Open' => 'true',
+        'AutoCreateUserInWhiteList' => 'true',
+        'MaxPlayers' => '16',
+    ];
+
+    $merged = array_merge($defaults, $settings);
+    $lines = [];
+
+    foreach ($merged as $key => $value) {
+        $lines[] = "{$key}={$value}";
+    }
+
+    $path = sys_get_temp_dir().'/pz_test_ini_'.uniqid().'.ini';
+    file_put_contents($path, implode("\n", $lines)."\n");
+
+    return $path;
+}
+
+describe('Whitelist settings', function () {
+    it('index page includes whitelist_settings prop with correct values', function () {
+        $iniPath = createTempIni(['Open' => 'false', 'AutoCreateUserInWhiteList' => 'true']);
+        config(['zomboid.paths.server_ini' => $iniPath]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.whitelist'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('whitelist_settings')
+                ->where('whitelist_settings.open', false)
+                ->where('whitelist_settings.auto_create_user_in_whitelist', true),
+            );
+
+        @unlink($iniPath);
+    });
+
+    it('PATCH endpoint updates server.ini and returns restart_required', function () {
+        $iniPath = createTempIni(['Open' => 'true', 'AutoCreateUserInWhiteList' => 'true']);
+        config(['zomboid.paths.server_ini' => $iniPath]);
+
+        $this->actingAs($this->admin)
+            ->patchJson(route('admin.whitelist.settings'), [
+                'open' => false,
+                'auto_create_user_in_whitelist' => false,
+            ])
+            ->assertOk()
+            ->assertJson([
+                'message' => 'Whitelist settings updated',
+                'restart_required' => true,
+            ]);
+
+        $parser = new ServerIniParser;
+        $ini = $parser->read($iniPath);
+
+        expect($ini['Open'])->toBe('false');
+        expect($ini['AutoCreateUserInWhiteList'])->toBe('false');
+
+        // Verify audit log
+        expect(AuditLog::where('action', 'whitelist.settings.update')->exists())->toBeTrue();
+
+        @unlink($iniPath);
+    });
+
+    it('rejects non-boolean values', function () {
+        $iniPath = createTempIni();
+        config(['zomboid.paths.server_ini' => $iniPath]);
+
+        $this->actingAs($this->admin)
+            ->patchJson(route('admin.whitelist.settings'), [
+                'open' => 'not-a-bool',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('open');
+
+        @unlink($iniPath);
+    });
+
+    it('non-admin users get 403', function () {
+        $player = User::factory()->create(['role' => UserRole::Player]);
+
+        $this->actingAs($player)
+            ->patchJson(route('admin.whitelist.settings'), [
+                'open' => false,
+            ])
+            ->assertForbidden();
+    });
+
+    it('missing server.ini defaults gracefully on index', function () {
+        config(['zomboid.paths.server_ini' => '/nonexistent/path/server.ini']);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.whitelist'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('whitelist_settings.open', true)
+                ->where('whitelist_settings.auto_create_user_in_whitelist', true),
+            );
     });
 });
