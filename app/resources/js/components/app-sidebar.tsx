@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     Activity,
     Archive,
+    Bell,
     BookOpen,
     Gamepad2,
     LayoutGrid,
@@ -69,6 +70,11 @@ const adminNavItems: NavItem[] = [
         title: 'Audit Log',
         href: '/admin/audit',
         icon: ScrollText,
+    },
+    {
+        title: 'Discord',
+        href: '/admin/discord',
+        icon: Bell,
     },
     {
         title: 'RCON Console',

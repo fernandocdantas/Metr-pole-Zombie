@@ -73,6 +73,11 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         Route::get('logs', [Admin\LogController::class, 'index'])->name('logs');
         Route::get('logs/fetch', [Admin\LogController::class, 'fetch'])->name('logs.fetch');
 
+        // Discord Webhook
+        Route::get('discord', [Admin\DiscordWebhookController::class, 'index'])->name('discord');
+        Route::patch('discord', [Admin\DiscordWebhookController::class, 'update'])->name('discord.update');
+        Route::post('discord/test', [Admin\DiscordWebhookController::class, 'test'])->name('discord.test');
+
         // Server Control
         Route::post('server/start', [Admin\ServerController::class, 'start'])->name('server.start');
         Route::post('server/stop', [Admin\ServerController::class, 'stop'])->name('server.stop');

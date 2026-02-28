@@ -1,0 +1,188 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\AuditLog;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+class DiscordWebhookService
+{
+    /**
+     * Maps audit actions to Discord embed configuration.
+     *
+     * @var array<string, array{color: int, emoji: string, title: string}>
+     */
+    private const ACTION_CONFIG = [
+        // Server — green for start, red for stop, orange for scheduled, blue for restart
+        'server.start' => ['color' => 0x2ECC71, 'emoji' => "\u{2705}", 'title' => 'Server Started'],
+        'server.stop' => ['color' => 0xE74C3C, 'emoji' => "\u{1F6D1}", 'title' => 'Server Stopped'],
+        'server.stop.scheduled' => ['color' => 0xE67E22, 'emoji' => "\u{23F3}", 'title' => 'Server Stop Scheduled'],
+        'server.stop.executed' => ['color' => 0xE74C3C, 'emoji' => "\u{1F6D1}", 'title' => 'Server Stop Executed'],
+        'server.restart' => ['color' => 0x3498DB, 'emoji' => "\u{1F504}", 'title' => 'Server Restarted'],
+        'server.restart.scheduled' => ['color' => 0xE67E22, 'emoji' => "\u{23F3}", 'title' => 'Server Restart Scheduled'],
+        'server.restart.executed' => ['color' => 0x3498DB, 'emoji' => "\u{1F504}", 'title' => 'Server Restart Executed'],
+        'server.save' => ['color' => 0x2ECC71, 'emoji' => "\u{1F4BE}", 'title' => 'World Saved'],
+
+        // Backup
+        'backup.create' => ['color' => 0x2ECC71, 'emoji' => "\u{1F4E6}", 'title' => 'Backup Started'],
+        'backup.created' => ['color' => 0x2ECC71, 'emoji' => "\u{2705}", 'title' => 'Backup Completed'],
+        'backup.rollback' => ['color' => 0x9B59B6, 'emoji' => "\u{23EA}", 'title' => 'Rollback Executed'],
+        'backup.rollback.scheduled' => ['color' => 0xE67E22, 'emoji' => "\u{23F3}", 'title' => 'Rollback Scheduled'],
+        'backup.rollback.executed' => ['color' => 0x9B59B6, 'emoji' => "\u{23EA}", 'title' => 'Rollback Completed'],
+        'backup.delete' => ['color' => 0xE74C3C, 'emoji' => "\u{1F5D1}", 'title' => 'Backup Deleted'],
+
+        // Player
+        'player.kick' => ['color' => 0xE67E22, 'emoji' => "\u{1F462}", 'title' => 'Player Kicked'],
+        'player.ban' => ['color' => 0xE74C3C, 'emoji' => "\u{1F6AB}", 'title' => 'Player Banned'],
+    ];
+
+    /**
+     * Send a notification for an audit log entry.
+     */
+    public function sendNotification(string $webhookUrl, AuditLog $auditLog): void
+    {
+        $config = self::ACTION_CONFIG[$auditLog->action] ?? null;
+
+        if (! $config) {
+            return;
+        }
+
+        $embed = [
+            'title' => "{$config['emoji']} {$config['title']}",
+            'color' => $config['color'],
+            'fields' => $this->buildFields($auditLog),
+            'footer' => [
+                'text' => config('app.name', 'PZ Server'),
+            ],
+            'timestamp' => ($auditLog->created_at ?? now())->toIso8601String(),
+        ];
+
+        $this->send($webhookUrl, ['embeds' => [$embed]]);
+    }
+
+    /**
+     * Send a test message to verify the webhook URL works.
+     *
+     * @return array{success: bool, error?: string}
+     */
+    public function sendTestMessage(string $webhookUrl): array
+    {
+        $embed = [
+            'title' => "\u{1F916} Webhook Test",
+            'description' => 'Discord webhook integration is working correctly!',
+            'color' => 0x2ECC71,
+            'footer' => [
+                'text' => config('app.name', 'PZ Server'),
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ];
+
+        return $this->send($webhookUrl, ['embeds' => [$embed]]);
+    }
+
+    /**
+     * Build embed fields from audit log details.
+     *
+     * @return array<int, array{name: string, value: string, inline: bool}>
+     */
+    private function buildFields(AuditLog $auditLog): array
+    {
+        $fields = [];
+
+        $fields[] = [
+            'name' => 'Action By',
+            'value' => $auditLog->actor ?? 'system',
+            'inline' => true,
+        ];
+
+        if ($auditLog->target) {
+            $fields[] = [
+                'name' => 'Target',
+                'value' => $auditLog->target,
+                'inline' => true,
+            ];
+        }
+
+        $details = $auditLog->details ?? [];
+
+        if (isset($details['countdown'])) {
+            $fields[] = [
+                'name' => 'Countdown',
+                'value' => "{$details['countdown']} seconds",
+                'inline' => true,
+            ];
+        }
+
+        if (isset($details['reason'])) {
+            $fields[] = [
+                'name' => 'Reason',
+                'value' => $details['reason'],
+                'inline' => false,
+            ];
+        }
+
+        if (isset($details['message'])) {
+            $fields[] = [
+                'name' => 'Message',
+                'value' => $details['message'],
+                'inline' => false,
+            ];
+        }
+
+        if (isset($details['size_bytes'])) {
+            $fields[] = [
+                'name' => 'Size',
+                'value' => $this->humanFileSize((int) $details['size_bytes']),
+                'inline' => true,
+            ];
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Send a payload to the Discord webhook URL.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array{success: bool, error?: string}
+     */
+    private function send(string $url, array $payload): array
+    {
+        try {
+            $response = Http::timeout(10)
+                ->retry(2, 1000)
+                ->post($url, $payload);
+
+            if ($response->successful() || $response->status() === 204) {
+                return ['success' => true];
+            }
+
+            $error = "Discord returned HTTP {$response->status()}";
+            Log::warning('Discord webhook failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return ['success' => false, 'error' => $error];
+        } catch (\Throwable $e) {
+            Log::warning('Discord webhook error', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    private function humanFileSize(int $bytes): string
+    {
+        if ($bytes === 0) {
+            return '0 B';
+        }
+
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $i = (int) floor(log($bytes, 1024));
+
+        return round($bytes / (1024 ** $i), 1).' '.$units[$i];
+    }
+}

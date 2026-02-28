@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\AuditLog;
+use App\Observers\AuditLogObserver;
 use App\Services\AuditLogger;
+use App\Services\DiscordWebhookService;
 use App\Services\DockerManager;
 use App\Services\RconClient;
 use Carbon\CarbonImmutable;
@@ -39,12 +42,16 @@ class AppServiceProvider extends ServiceProvider
                 containerName: $config['container_name'],
             );
         });
+
+        $this->app->singleton(DiscordWebhookService::class);
     }
 
     public function boot(): void
     {
         $this->configureDefaults();
         $this->configureRateLimiting();
+
+        AuditLog::observe(AuditLogObserver::class);
     }
 
     protected function configureDefaults(): void
