@@ -140,9 +140,26 @@ class ServerController extends Controller
             ip: $request->ip(),
         );
 
-        RestartGameServer::dispatch($request->ip());
+        try {
+            $this->rcon->connect();
+            $this->rcon->command('save');
+        } catch (\Throwable) {
+            // RCON unavailable — proceed with restart
+        }
 
-        return response()->json(['message' => 'Server restarting']);
+        try {
+            $this->docker->restartContainer(timeout: 30);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Failed to restart server: '.$e->getMessage()], 503);
+        }
+
+        $this->auditLogger->log(
+            actor: $request->user()->name ?? 'admin',
+            action: 'server.restart.completed',
+            ip: $request->ip(),
+        );
+
+        return response()->json(['message' => 'Server restarted']);
     }
 
     public function save(Request $request): JsonResponse

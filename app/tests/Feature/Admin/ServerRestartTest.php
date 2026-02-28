@@ -28,15 +28,18 @@ beforeEach(function () {
 // ── Immediate restart ────────────────────────────────────────────────
 
 it('performs immediate restart when no countdown is provided', function () {
-    Queue::fake();
+    $rcon = Mockery::mock(RconClient::class);
+    $rcon->shouldReceive('connect')->once();
+    $rcon->shouldReceive('command')->with('save')->once();
+    app()->instance(RconClient::class, $rcon);
 
     $this->actingAs($this->admin)
         ->postJson(route('admin.server.restart'))
         ->assertOk()
-        ->assertJson(['message' => 'Server restarting']);
+        ->assertJson(['message' => 'Server restarted']);
 
     expect(AuditLog::where('action', 'server.restart')->exists())->toBeTrue();
-    Queue::assertPushed(RestartGameServer::class);
+    expect(AuditLog::where('action', 'server.restart.completed')->exists())->toBeTrue();
 });
 
 // ── Scheduled restart ────────────────────────────────────────────────
