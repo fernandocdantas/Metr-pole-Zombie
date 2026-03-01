@@ -102,6 +102,9 @@ class BackupController extends Controller
             'message' => 'sometimes|nullable|string|max:500',
         ]);
 
+        // Validate backup file exists before dispatching job
+        $this->backupManager->validateBackupFile($backup);
+
         $countdown = $validated['countdown'] ?? null;
 
         if ($countdown) {
@@ -115,9 +118,6 @@ class BackupController extends Controller
                 // RCON unavailable — still schedule the rollback
             }
 
-            RollbackGameServer::dispatch($backup->id, $request->ip())
-                ->delay(now()->addSeconds($countdown));
-
             SendServerWarning::dispatchCountdownWarnings($countdown, 'rolling back', 'server.pending_action:rollback');
 
             $this->auditLogger->log(
@@ -127,29 +127,24 @@ class BackupController extends Controller
                 details: ['countdown' => $countdown],
                 ip: $request->ip(),
             );
-
-            return response()->json([
-                'message' => "Rollback scheduled in {$countdown} seconds",
-                'countdown' => $countdown,
-            ]);
+        } else {
+            $this->auditLogger->log(
+                actor: $request->user()->name ?? 'admin',
+                action: 'backup.rollback.initiated',
+                target: $backup->filename,
+                ip: $request->ip(),
+            );
         }
 
-        $result = $this->backupManager->rollback($backup);
-
-        $this->auditLogger->log(
-            actor: $request->user()->name ?? 'admin',
-            action: 'backup.rollback',
-            target: $backup->filename,
-            details: [
-                'pre_rollback_backup' => $result['pre_rollback_backup']->filename,
-            ],
-            ip: $request->ip(),
-        );
+        // Always dispatch via queue — queue worker runs as root,
+        // which is required to overwrite game server files.
+        RollbackGameServer::dispatch($backup->id, $request->ip())
+            ->delay($countdown ? now()->addSeconds($countdown) : null);
 
         return response()->json([
-            'message' => 'Rollback completed',
-            'restored_from' => new BackupResource($backup),
-            'pre_rollback_backup' => new BackupResource($result['pre_rollback_backup']),
+            'message' => $countdown
+                ? "Rollback scheduled in {$countdown} seconds"
+                : 'Rollback initiated — server will restart shortly',
         ]);
     }
 }

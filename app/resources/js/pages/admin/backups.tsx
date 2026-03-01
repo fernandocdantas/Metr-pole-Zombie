@@ -112,7 +112,7 @@ export default function Backups({ backups }: { backups: PaginatedBackups }) {
             data,
             successMessage: countdown > 0
                 ? `Rollback scheduled in ${countdown} seconds`
-                : `Rolled back to ${backup.filename}`,
+                : `Rollback initiated — ${backup.filename} will be restored`,
         });
         setLoading(false);
         setRollbackTarget(null);

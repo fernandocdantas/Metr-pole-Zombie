@@ -33,7 +33,7 @@ class DiscordWebhookService
         // Backup
         'backup.create' => ['color' => 0x2ECC71, 'emoji' => "\u{1F4E6}", 'title' => 'Backup Started'],
         'backup.created' => ['color' => 0x2ECC71, 'emoji' => "\u{2705}", 'title' => 'Backup Completed'],
-        'backup.rollback' => ['color' => 0x9B59B6, 'emoji' => "\u{23EA}", 'title' => 'Rollback Executed'],
+        'backup.rollback.initiated' => ['color' => 0x9B59B6, 'emoji' => "\u{23EA}", 'title' => 'Rollback Initiated'],
         'backup.rollback.scheduled' => ['color' => 0xE67E22, 'emoji' => "\u{23F3}", 'title' => 'Rollback Scheduled'],
         'backup.rollback.executed' => ['color' => 0x9B59B6, 'emoji' => "\u{23EA}", 'title' => 'Rollback Completed'],
         'backup.delete' => ['color' => 0xE74C3C, 'emoji' => "\u{1F5D1}", 'title' => 'Backup Deleted'],
