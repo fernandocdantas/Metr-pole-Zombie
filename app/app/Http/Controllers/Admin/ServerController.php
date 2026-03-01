@@ -3,17 +3,23 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Enums\BackupType;
 use App\Http\Requests\Admin\RestartServerRequest;
 use App\Http\Requests\Admin\StopServerRequest;
+use App\Http\Requests\Admin\WipeServerRequest;
 use App\Jobs\RestartGameServer;
 use App\Jobs\SendServerWarning;
 use App\Jobs\StopGameServer;
 use App\Jobs\WaitForServerReady;
+use App\Jobs\WipeGameServer;
 use App\Services\AuditLogger;
+use App\Services\BackupManager;
 use App\Services\DockerManager;
 use App\Services\RconClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
 use function Illuminate\Support\defer;
 
 class ServerController extends Controller
@@ -22,6 +28,7 @@ class ServerController extends Controller
         private readonly DockerManager $docker,
         private readonly RconClient $rcon,
         private readonly AuditLogger $auditLogger,
+        private readonly BackupManager $backupManager,
     ) {}
 
     public function start(Request $request): JsonResponse
@@ -196,5 +203,98 @@ class ServerController extends Controller
         );
 
         return response()->json(['message' => 'World saved']);
+    }
+
+    public function wipe(WipeServerRequest $request): JsonResponse
+    {
+        $countdown = $request->validated('countdown');
+        $message = $request->validated('message');
+
+        if ($countdown) {
+            $warningMessage = $message ?? "Server wiping in {$countdown} seconds — all save data will be deleted";
+
+            try {
+                $this->rcon->connect();
+                $this->rcon->command("servermsg \"{$warningMessage}\"");
+            } catch (\Throwable) {
+                // RCON unavailable — still schedule the wipe
+            }
+
+            WipeGameServer::dispatch($request->ip())
+                ->delay(now()->addSeconds($countdown));
+
+            SendServerWarning::dispatchCountdownWarnings($countdown, 'wiping', 'server.pending_action:wipe');
+
+            $this->auditLogger->log(
+                actor: $request->user()->name ?? 'admin',
+                action: 'server.wipe.scheduled',
+                ip: $request->ip(),
+                details: ['countdown' => $countdown],
+            );
+
+            return response()->json([
+                'message' => "Server wipe scheduled in {$countdown} seconds",
+                'countdown' => $countdown,
+            ]);
+        }
+
+        // Immediate wipe
+        $this->auditLogger->log(
+            actor: $request->user()->name ?? 'admin',
+            action: 'server.wipe',
+            ip: $request->ip(),
+        );
+
+        $docker = $this->docker;
+        $rcon = $this->rcon;
+        $backupManager = $this->backupManager;
+        $ip = $request->ip();
+        $actor = $request->user()->name ?? 'admin';
+
+        defer(function () use ($docker, $rcon, $backupManager, $ip, $actor) {
+            // 1. Create pre-wipe backup
+            try {
+                $result = $backupManager->createBackup(BackupType::PreRollback, 'Pre-wipe safety backup');
+
+                Log::info('Pre-wipe backup created', [
+                    'filename' => $result['backup']->filename,
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('Pre-wipe backup failed, proceeding with wipe', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            // 2. Graceful shutdown
+            try {
+                $rcon->connect();
+                $rcon->command('save');
+                sleep(5);
+                $rcon->command('quit');
+            } catch (\Throwable) {
+                // RCON unavailable — proceed with Docker stop
+            }
+
+            $docker->stopContainer(timeout: 30);
+
+            // 3. Delete save data
+            $serverName = config('zomboid.server_name', 'ZomboidServer');
+            $savePath = config('zomboid.paths.data')."/Saves/Multiplayer/{$serverName}";
+
+            if (is_dir($savePath)) {
+                Process::run(['rm', '-rf', $savePath]);
+            }
+
+            // 4. Start server
+            $docker->startContainer();
+
+            WaitForServerReady::dispatch(
+                'server.wipe.completed',
+                $actor,
+                $ip,
+            );
+        });
+
+        return response()->json(['message' => 'Server wipe in progress']);
     }
 }

@@ -9,6 +9,7 @@ import {
     Save,
     ScrollText,
     Square,
+    Trash2,
     Users,
     Zap,
 } from 'lucide-react';
@@ -77,6 +78,11 @@ export default function Dashboard({
     const [stopCountdown, setStopCountdown] = useState('0');
     const [stopMessage, setStopMessage] = useState('');
     const [stopLoading, setStopLoading] = useState(false);
+    const [showWipeDialog, setShowWipeDialog] = useState(false);
+    const [wipeCountdown, setWipeCountdown] = useState('0');
+    const [wipeMessage, setWipeMessage] = useState('');
+    const [wipeLoading, setWipeLoading] = useState(false);
+    const [wipeConfirmStep, setWipeConfirmStep] = useState(0);
 
     usePoll(5000, { only: ['server', 'game_state'] });
 
@@ -120,6 +126,29 @@ export default function Dashboard({
         setShowStopDialog(false);
         setStopCountdown('0');
         setStopMessage('');
+        setTimeout(() => router.reload({ only: ['server'] }), 2000);
+    }
+
+    async function handleWipe() {
+        if (wipeConfirmStep < 2) {
+            setWipeConfirmStep(wipeConfirmStep + 1);
+            return;
+        }
+        setWipeLoading(true);
+        const countdown = parseInt(wipeCountdown, 10);
+        const data: Record<string, unknown> = {};
+        if (countdown > 0) {
+            data.countdown = countdown;
+            if (wipeMessage.trim()) {
+                data.message = wipeMessage.trim();
+            }
+        }
+        await fetchAction('/admin/server/wipe', { data: Object.keys(data).length > 0 ? data : undefined });
+        setWipeLoading(false);
+        setShowWipeDialog(false);
+        setWipeCountdown('0');
+        setWipeMessage('');
+        setWipeConfirmStep(0);
         setTimeout(() => router.reload({ only: ['server'] }), 2000);
     }
 
@@ -200,6 +229,18 @@ export default function Dashboard({
                                 Start
                             </Button>
                         )}
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={actionLoading !== null}
+                            onClick={() => {
+                                setWipeConfirmStep(0);
+                                setShowWipeDialog(true);
+                            }}
+                        >
+                            <Trash2 className="mr-1.5 size-3.5" />
+                            Wipe
+                        </Button>
                     </div>
                 </div>
 
@@ -550,6 +591,82 @@ export default function Dashboard({
                                 : stopCountdown === '0'
                                   ? 'Stop Now'
                                   : 'Schedule Shutdown'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showWipeDialog} onOpenChange={(open) => {
+                setShowWipeDialog(open);
+                if (!open) {
+                    setWipeConfirmStep(0);
+                }
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive">Wipe Server</DialogTitle>
+                        <DialogDescription>
+                            This will permanently delete all save data. A backup will be created automatically before wiping.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                            All player progress, buildings, and world state will be permanently destroyed.
+                            This action cannot be undone.
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="wipe-countdown">Countdown</Label>
+                            <Select value={wipeCountdown} onValueChange={setWipeCountdown}>
+                                <SelectTrigger id="wipe-countdown">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {COUNTDOWN_OPTIONS.map((opt) => (
+                                        <SelectItem key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {wipeCountdown !== '0' && (
+                            <div className="grid gap-2">
+                                <Label htmlFor="wipe-message">Warning message (optional)</Label>
+                                <Input
+                                    id="wipe-message"
+                                    placeholder="Server wiping — all progress will be reset..."
+                                    value={wipeMessage}
+                                    onChange={(e) => setWipeMessage(e.target.value)}
+                                    maxLength={500}
+                                />
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowWipeDialog(false);
+                                setWipeConfirmStep(0);
+                            }}
+                            disabled={wipeLoading}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleWipe}
+                            disabled={wipeLoading}
+                        >
+                            {wipeLoading
+                                ? 'Wiping...'
+                                : wipeConfirmStep === 0
+                                  ? 'Confirm Wipe'
+                                  : wipeConfirmStep === 1
+                                    ? 'Are you sure? Click again'
+                                    : wipeCountdown === '0'
+                                      ? 'Wipe Now'
+                                      : 'Schedule Wipe'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

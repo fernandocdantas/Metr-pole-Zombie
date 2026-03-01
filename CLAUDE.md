@@ -48,9 +48,20 @@ make exec CMD="php artisan scribe:generate"
 # Cache
 make exec CMD="php artisan config:clear"
 
+# Code formatting (Pint)
+make exec CMD="vendor/bin/pint --dirty --format agent"
+
+# Wayfinder route generation
+make exec CMD="php artisan wayfinder:generate"
+
+# Frontend build
+make exec CMD="npm run build"
+
 # Check detected architecture
 make arch
 ```
+
+**Important:** All PHP/artisan commands must run inside the Docker container via `make exec CMD="..."`. Never run them directly on the host.
 
 ## Architecture
 
@@ -133,7 +144,7 @@ Detailed plan with acceptance criteria in `IMPLEMENTATION_PLAN.md`. Status track
 - Do NOT delete tests without approval
 
 ### Code Formatting
-- Run `vendor/bin/pint --dirty --format agent` after modifying PHP files
+- Run `make exec CMD="vendor/bin/pint --dirty --format agent"` after modifying PHP files
 
 ### Inertia.js v2
 - Components live in `resources/js/pages`
