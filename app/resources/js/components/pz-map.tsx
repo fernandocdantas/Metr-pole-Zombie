@@ -1,18 +1,40 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { DziInfo, MapConfig, PlayerMarker } from '@/types/server';
 
 type MarkerAction = 'kick' | 'ban' | 'access' | 'inventory';
 
+export type ZoneOverlay = {
+    id: string;
+    name: string;
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    color: string;
+};
+
+export type DrawnZone = {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+};
+
 type PzMapProps = {
-    markers: PlayerMarker[];
+    markers?: PlayerMarker[];
     mapConfig: MapConfig;
     hasTiles: boolean;
     className?: string;
     interactive?: boolean;
     onMarkerClick?: (marker: PlayerMarker) => void;
     onMarkerAction?: (marker: PlayerMarker, action: MarkerAction) => void;
+    zones?: ZoneOverlay[];
+    drawingMode?: boolean;
+    onZoneDrawn?: (zone: DrawnZone) => void;
+    selectedZoneId?: string | null;
+    onZoneClick?: (zone: ZoneOverlay) => void;
 };
 
 const statusColors: Record<PlayerMarker['status'], string> = {
@@ -160,18 +182,40 @@ function createPzCRS(dzi: DziInfo): L.CRS {
     });
 }
 
+/** Convert a Leaflet LatLng to PZ game coordinates. */
+function latLngToPz(ll: L.LatLng): { x: number; y: number } {
+    return { x: ll.lng, y: -ll.lat };
+}
+
 export default function PzMap({
-    markers,
+    markers = [],
     mapConfig,
     hasTiles,
     className = '',
     interactive = true,
     onMarkerClick,
     onMarkerAction,
+    zones,
+    drawingMode = false,
+    onZoneDrawn,
+    selectedZoneId,
+    onZoneClick,
 }: PzMapProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
     const markersLayerRef = useRef<L.LayerGroup | null>(null);
+    const zonesLayerRef = useRef<L.LayerGroup | null>(null);
+    const drawStateRef = useRef<{
+        drawing: boolean;
+        startLatLng: L.LatLng | null;
+        previewRect: L.Rectangle | null;
+    }>({ drawing: false, startLatLng: null, previewRect: null });
+
+    // Stable refs for callbacks so event handlers always see latest values
+    const onZoneDrawnRef = useRef(onZoneDrawn);
+    onZoneDrawnRef.current = onZoneDrawn;
+    const drawingModeRef = useRef(drawingMode);
+    drawingModeRef.current = drawingMode;
 
     // Initialize map
     useEffect(() => {
@@ -190,7 +234,7 @@ export default function PzMap({
             scrollWheelZoom: interactive,
             doubleClickZoom: interactive,
             touchZoom: interactive,
-            boxZoom: interactive,
+            boxZoom: false, // Disable boxZoom so shift-drag doesn't conflict with drawing
             keyboard: interactive,
             attributionControl: false,
         });
@@ -213,14 +257,100 @@ export default function PzMap({
 
         const markersLayer = L.layerGroup().addTo(map);
         markersLayerRef.current = markersLayer;
+
+        const zonesLayer = L.layerGroup().addTo(map);
+        zonesLayerRef.current = zonesLayer;
+
         mapRef.current = map;
+
+        // Drawing event handlers
+        map.on('mousedown', (e: L.LeafletMouseEvent) => {
+            if (!drawingModeRef.current) return;
+            const state = drawStateRef.current;
+            state.drawing = true;
+            state.startLatLng = e.latlng;
+            map.dragging.disable();
+
+            // Create preview rectangle
+            state.previewRect = L.rectangle(
+                [e.latlng, e.latlng],
+                { color: '#22c55e', weight: 2, fillOpacity: 0.15, dashArray: '6 4' },
+            ).addTo(map);
+        });
+
+        map.on('mousemove', (e: L.LeafletMouseEvent) => {
+            const state = drawStateRef.current;
+            if (!state.drawing || !state.startLatLng || !state.previewRect) return;
+            state.previewRect.setBounds(L.latLngBounds(state.startLatLng, e.latlng));
+        });
+
+        map.on('mouseup', (e: L.LeafletMouseEvent) => {
+            const state = drawStateRef.current;
+            if (!state.drawing || !state.startLatLng) return;
+
+            const start = latLngToPz(state.startLatLng);
+            const end = latLngToPz(e.latlng);
+
+            // Clean up preview
+            if (state.previewRect) {
+                map.removeLayer(state.previewRect);
+                state.previewRect = null;
+            }
+            state.drawing = false;
+            state.startLatLng = null;
+
+            if (interactive) {
+                map.dragging.enable();
+            }
+
+            // Minimum 10-unit size check prevents accidental micro-zones
+            const x1 = Math.round(Math.min(start.x, end.x));
+            const y1 = Math.round(Math.min(start.y, end.y));
+            const x2 = Math.round(Math.max(start.x, end.x));
+            const y2 = Math.round(Math.max(start.y, end.y));
+
+            if (x2 - x1 < 10 || y2 - y1 < 10) return;
+
+            onZoneDrawnRef.current?.({ x1, y1, x2, y2 });
+        });
 
         return () => {
             map.remove();
             mapRef.current = null;
             markersLayerRef.current = null;
+            zonesLayerRef.current = null;
         };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Update cursor for drawing mode
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+        container.style.cursor = drawingMode ? 'crosshair' : '';
+    }, [drawingMode]);
+
+    // Cancel drawing on Escape
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            const state = drawStateRef.current;
+            if (state.previewRect && mapRef.current) {
+                mapRef.current.removeLayer(state.previewRect);
+            }
+            state.drawing = false;
+            state.startLatLng = null;
+            state.previewRect = null;
+            if (interactive && mapRef.current) {
+                mapRef.current.dragging.enable();
+            }
+        }
+    }, [interactive]);
+
+    useEffect(() => {
+        if (drawingMode) {
+            window.addEventListener('keydown', handleKeyDown);
+            return () => window.removeEventListener('keydown', handleKeyDown);
+        }
+    }, [drawingMode, handleKeyDown]);
 
     // Update markers when data changes
     useEffect(() => {
@@ -243,8 +373,8 @@ export default function PzMap({
                 const container = popup.getElement();
                 if (!container) return;
                 container.querySelectorAll<HTMLButtonElement>('.pz-action').forEach((btn) => {
-                    btn.addEventListener('click', (e) => {
-                        const action = (e.currentTarget as HTMLButtonElement).dataset.action as MarkerAction;
+                    btn.addEventListener('click', (ev) => {
+                        const action = (ev.currentTarget as HTMLButtonElement).dataset.action as MarkerAction;
                         if (action && onMarkerAction) {
                             onMarkerAction(marker, action);
                             lMarker.closePopup();
@@ -259,7 +389,41 @@ export default function PzMap({
         });
     }, [markers, onMarkerClick, onMarkerAction]);
 
-    return <div ref={containerRef} className={`h-full w-full ${className}`} />;
+    // Update zone overlays
+    useEffect(() => {
+        const layer = zonesLayerRef.current;
+        if (!layer) return;
+
+        layer.clearLayers();
+        if (!zones) return;
+
+        zones.forEach((zone) => {
+            const bounds = L.latLngBounds(
+                L.latLng(-zone.y1, zone.x1),
+                L.latLng(-zone.y2, zone.x2),
+            );
+
+            const isSelected = selectedZoneId === zone.id;
+            const rect = L.rectangle(bounds, {
+                color: zone.color,
+                weight: isSelected ? 3 : 2,
+                fillOpacity: isSelected ? 0.25 : 0.1,
+                dashArray: isSelected ? undefined : '8 4',
+            }).addTo(layer);
+
+            rect.bindTooltip(zone.name, {
+                permanent: true,
+                direction: 'center',
+                className: 'pz-zone-tooltip',
+            });
+
+            if (onZoneClick) {
+                rect.on('click', () => onZoneClick(zone));
+            }
+        });
+    }, [zones, selectedZoneId, onZoneClick]);
+
+    return <div ref={containerRef} className={`isolate h-full w-full ${className}`} />;
 }
 
 function addCoordinateGrid(map: L.Map) {
