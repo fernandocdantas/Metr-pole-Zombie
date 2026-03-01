@@ -162,3 +162,98 @@ LOG;
     expect($count)->toBe(1);
     expect(GameEvent::count())->toBe(1);
 });
+
+// ── Vanilla PZ log format ────────────────────────────────────────────
+
+test('isInstalled returns true when vanilla user log exists', function () {
+    file_put_contents($this->tempDir.'/2026-03-01_18-58_user.txt', '');
+
+    $parser = new LogExtenderParser($this->tempDir);
+
+    expect($parser->isInstalled())->toBeTrue();
+});
+
+test('parses vanilla PZ death events from user log', function () {
+    $logContent = <<<'LOG'
+[01-03-26 20:03:30.043] user Taia died at (8075,11520,0) (non pvp).
+[01-03-26 21:02:16.275] user kirtoius died at (8136,11575,0) (non pvp).
+LOG;
+
+    file_put_contents($this->tempDir.'/2026-03-01_18-58_user.txt', $logContent);
+
+    $parser = new LogExtenderParser($this->tempDir);
+    $count = $parser->parseAll();
+
+    expect($count)->toBe(2);
+
+    $event = GameEvent::query()->where('player', 'Taia')->first();
+    expect($event)->not->toBeNull()
+        ->and($event->event_type)->toBe('death')
+        ->and($event->x)->toBe(8075)
+        ->and($event->y)->toBe(11520);
+});
+
+test('parses vanilla PZ connect and disconnect events', function () {
+    $logContent = <<<'LOG'
+[01-03-26 20:02:40.058] 76561198201159415 "admin" fully connected (8075,11520,0).
+[01-03-26 20:03:55.733] 76561198929103275 "Taia" disconnected player (8079,11521,0).
+LOG;
+
+    file_put_contents($this->tempDir.'/2026-03-01_18-58_user.txt', $logContent);
+
+    $parser = new LogExtenderParser($this->tempDir);
+    $count = $parser->parseAll();
+
+    expect($count)->toBe(2);
+
+    $connect = GameEvent::query()->where('event_type', 'connect')->first();
+    expect($connect->player)->toBe('admin')
+        ->and($connect->x)->toBe(8075)
+        ->and($connect->y)->toBe(11520);
+
+    $disconnect = GameEvent::query()->where('event_type', 'disconnect')->first();
+    expect($disconnect->player)->toBe('Taia')
+        ->and($disconnect->x)->toBe(8079)
+        ->and($disconnect->y)->toBe(11521);
+});
+
+test('parses vanilla PZ combat events and skips zombie hits', function () {
+    $logContent = <<<'LOG'
+[01-03-26 20:21:10.600][INFO] Combat: "kirtoius" (8148,11471,1) hit "admin" (8149,11472,1) weapon="Crowbar (Bloody)" damage=0.240635.
+[01-03-26 20:03:29.428][INFO] Combat: "Taia" (8075,11517,0) hit "Taia" (8075,11520,0) weapon="zombie" damage=-1.000000.
+LOG;
+
+    file_put_contents($this->tempDir.'/2026-03-01_18-58_pvp.txt', $logContent);
+
+    $parser = new LogExtenderParser($this->tempDir);
+    $count = $parser->parseAll();
+
+    expect($count)->toBe(1);
+
+    $event = GameEvent::first();
+    expect($event->event_type)->toBe('pvp_kill')
+        ->and($event->player)->toBe('kirtoius')
+        ->and($event->target)->toBe('admin')
+        ->and($event->x)->toBe(8148)
+        ->and($event->y)->toBe(11471)
+        ->and($event->details['weapon'])->toBe('Crowbar (Bloody)')
+        ->and($event->details['damage'])->toBe('0.240635');
+});
+
+test('parses vanilla PZ death with multi-word username', function () {
+    $logContent = <<<'LOG'
+[01-03-26 21:05:36.435] user ToYB Sawyer died at (8130,11574,0) (non pvp).
+LOG;
+
+    file_put_contents($this->tempDir.'/2026-03-01_18-58_user.txt', $logContent);
+
+    $parser = new LogExtenderParser($this->tempDir);
+    $count = $parser->parseAll();
+
+    expect($count)->toBe(1);
+
+    $event = GameEvent::first();
+    expect($event->player)->toBe('ToYB Sawyer')
+        ->and($event->x)->toBe(8130)
+        ->and($event->y)->toBe(11574);
+});
