@@ -37,6 +37,7 @@ type PlayerEntry = {
     character_name: string | null;
     whitelisted: boolean;
     role: string;
+    has_stored_credentials: boolean;
 };
 
 type WhitelistSettings = {
@@ -132,12 +133,25 @@ export default function Whitelist({ players, whitelist_settings }: { players: Pl
         router.reload({ only: ['players'] });
     }
 
-    function toggleWhitelist(target: string, isWhitelisted: boolean) {
+    function toggleWhitelist(target: string, isWhitelisted: boolean, hasStoredCredentials: boolean) {
         if (isWhitelisted) {
             setRemoveTarget(target);
+        } else if (hasStoredCredentials) {
+            // Restore directly using stored bcrypt hash — no password needed
+            restoreWhitelist(target);
         } else {
             setPasswordTarget(target);
         }
+    }
+
+    async function restoreWhitelist(target: string) {
+        setLoading(true);
+        await fetchAction(`/admin/whitelist/${target}/toggle`, {
+            data: {},
+            successMessage: `Whitelisted ${target}`,
+        });
+        setLoading(false);
+        router.reload({ only: ['players'] });
     }
 
     async function confirmAddToWhitelist() {
@@ -359,7 +373,7 @@ export default function Whitelist({ players, whitelist_settings }: { players: Pl
                                                 <Button
                                                     variant={player.whitelisted ? 'outline' : 'default'}
                                                     size="sm"
-                                                    onClick={() => toggleWhitelist(player.username, player.whitelisted)}
+                                                    onClick={() => toggleWhitelist(player.username, player.whitelisted, player.has_stored_credentials)}
                                                 >
                                                     {player.whitelisted ? (
                                                         <>

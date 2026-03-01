@@ -46,7 +46,8 @@ class RegistrationTest extends TestCase
 
         $entry = WhitelistEntry::where('pz_username', 'testplayer')->first();
         $this->assertNotNull($entry->user_id);
-        $this->assertEquals('secret', $entry->pz_password_hash);
+        $this->assertNotNull($entry->pz_password_hash);
+        $this->assertTrue(str_starts_with($entry->pz_password_hash, '$2'));
     }
 
     public function test_registration_with_optional_email()

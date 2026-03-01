@@ -50,6 +50,11 @@ class WhitelistController extends Controller
             // players.db not available
         }
 
+        // Build lookup of usernames that have stored password hashes in PostgreSQL
+        $storedHashUsernames = \App\Models\WhitelistEntry::whereNotNull('pz_password_hash')
+            ->pluck('pz_username')
+            ->all();
+
         // Get all web users and enrich with whitelist status + character name
         $players = User::query()
             ->orderBy('username')
@@ -60,6 +65,7 @@ class WhitelistController extends Controller
                 'character_name' => $characterNames[$user->username] ?? null,
                 'whitelisted' => in_array($user->username, $whitelistedUsernames, true),
                 'role' => $user->role->value,
+                'has_stored_credentials' => in_array($user->username, $storedHashUsernames, true),
             ])
             ->values()
             ->all();
@@ -184,12 +190,17 @@ class WhitelistController extends Controller
             ]);
         }
 
-        // Adding to whitelist requires a password
-        $validated = $request->validate([
-            'password' => 'required|string|min:4|max:100',
-        ]);
+        // Try to restore using stored bcrypt hash from PostgreSQL
+        $restored = $this->whitelistManager->restore($username);
 
-        $this->whitelistManager->add($username, $validated['password']);
+        if (! $restored) {
+            // No stored hash — require a password
+            $validated = $request->validate([
+                'password' => 'required|string|min:4|max:100',
+            ]);
+
+            $this->whitelistManager->add($username, $validated['password']);
+        }
 
         $this->auditLogger->log(
             actor: $request->user()->name ?? 'admin',
