@@ -116,6 +116,12 @@ Edit `server.ini` and sandbox settings from the browser. Settings are organized 
 
 Add mods by Steam Workshop ID. The system keeps `WorkshopItems=` and `Mods=` lines in sync (paired entries, semicolon-separated). Drag-and-drop load order reordering. Remove mods with a single click. Requires a restart to apply.
 
+<details>
+<summary>Screenshot</summary>
+
+![Mods](docs/screenshots/mods.png)
+</details>
+
 ### Backup & Rollback
 
 Create manual backups or configure scheduled backups with per-type retention policies. Backups are created as queue jobs to avoid blocking the UI. Rollback to any previous backup with automatic pre-rollback snapshot. Backup types: manual, scheduled, pre-rollback, pre-update.
@@ -130,13 +136,31 @@ Create manual backups or configure scheduled backups with per-type retention pol
 
 CRUD operations on the PZ whitelist stored in `serverPZ.db` (SQLite). Add, remove, and toggle player entries. Sync the whitelist from the game server's live database. Configure auto-whitelist behavior.
 
+<details>
+<summary>Screenshot</summary>
+
+![Whitelist](docs/screenshots/whitelist.png)
+</details>
+
 ### Safe Zones
 
 Define PvP-free rectangular zones on the map with coordinates. The Lua bridge mod enforces zones server-side. Violations are tracked with attacker/victim details, zone info, strike count, and coordinates. Resolve violations by dismissing or taking action. Toggle the entire system on/off.
 
+<details>
+<summary>Screenshot</summary>
+
+![Safe Zones](docs/screenshots/safe-zones.png)
+</details>
+
 ### Moderation & Events
 
 Centralized moderation view showing PvP violations, safe zone events, and player action history. Filter by player, zone, or event type. Escalating strike system for repeat offenders.
+
+<details>
+<summary>Screenshot</summary>
+
+![Moderation](docs/screenshots/moderation.png)
+</details>
 
 ### RCON Console
 
@@ -152,13 +176,31 @@ Browser-based RCON console with command history. Send any RCON command and see t
 
 Live server log viewer with auto-refresh. Filter logs by type and search within log content. View logs from the game server's output directly in the browser.
 
+<details>
+<summary>Screenshot</summary>
+
+![Server Logs](docs/screenshots/logs.png)
+</details>
+
 ### Audit Logging
 
 Every admin action is recorded with: timestamp, user, action type, IP address, and full request payload. Browse, search, and filter the audit trail from the admin panel.
 
+<details>
+<summary>Screenshot</summary>
+
+![Audit Log](docs/screenshots/audit.png)
+</details>
+
 ### Discord Webhooks
 
 25+ configurable Discord webhook notifications across server control, backup management, player actions, safe zone events, and respawn delay changes. Per-event toggle. Test webhook delivery from the settings page. Rich embeds with color-coded categories and emoji.
+
+<details>
+<summary>Screenshot</summary>
+
+![Discord](docs/screenshots/discord.png)
+</details>
 
 ### Authentication & Security
 
@@ -308,7 +350,95 @@ make down && make up
 
 ## Screenshots
 
-See the collapsible sections throughout [Features](#features) above for screenshots of each page.
+<details open>
+<summary>Dashboard</summary>
+
+![Dashboard](docs/screenshots/dashboard.png)
+</details>
+
+<details open>
+<summary>Players</summary>
+
+![Players](docs/screenshots/players.png)
+</details>
+
+<details open>
+<summary>Player Map</summary>
+
+![Player Map](docs/screenshots/player-map.png)
+</details>
+
+<details open>
+<summary>Inventory</summary>
+
+![Inventory](docs/screenshots/inventory.png)
+</details>
+
+<details open>
+<summary>Configuration</summary>
+
+![Config](docs/screenshots/config.png)
+</details>
+
+<details open>
+<summary>Mods</summary>
+
+![Mods](docs/screenshots/mods.png)
+</details>
+
+<details open>
+<summary>Backups</summary>
+
+![Backups](docs/screenshots/backups.png)
+</details>
+
+<details open>
+<summary>Whitelist</summary>
+
+![Whitelist](docs/screenshots/whitelist.png)
+</details>
+
+<details open>
+<summary>Safe Zones</summary>
+
+![Safe Zones](docs/screenshots/safe-zones.png)
+</details>
+
+<details open>
+<summary>Moderation</summary>
+
+![Moderation](docs/screenshots/moderation.png)
+</details>
+
+<details open>
+<summary>Discord Webhooks</summary>
+
+![Discord](docs/screenshots/discord.png)
+</details>
+
+<details open>
+<summary>RCON Console</summary>
+
+![RCON Console](docs/screenshots/rcon.png)
+</details>
+
+<details open>
+<summary>Audit Log</summary>
+
+![Audit Log](docs/screenshots/audit.png)
+</details>
+
+<details open>
+<summary>Server Logs</summary>
+
+![Server Logs](docs/screenshots/logs.png)
+</details>
+
+<details open>
+<summary>Public Status Page</summary>
+
+![Status Page](docs/screenshots/status.png)
+</details>
 
 ## REST API Reference
 
