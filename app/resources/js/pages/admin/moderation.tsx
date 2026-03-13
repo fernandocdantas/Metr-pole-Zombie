@@ -38,6 +38,7 @@ type Props = {
 };
 
 const EVENT_TYPES = [
+    { value: 'pvp_kill', label: 'PvP Kill', color: '#f97316' },
     { value: 'pvp_hit', label: 'PvP Hit', color: '#ef4444' },
     { value: 'death', label: 'Death', color: '#9ca3af' },
     { value: 'connect', label: 'Connect', color: '#22c55e' },
@@ -45,6 +46,7 @@ const EVENT_TYPES = [
 ] as const;
 
 const typeBadgeVariant: Record<string, 'destructive' | 'secondary' | 'outline'> = {
+    pvp_kill: 'destructive',
     pvp_hit: 'destructive',
     death: 'secondary',
     connect: 'outline',

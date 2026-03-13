@@ -113,6 +113,7 @@ class DashboardController extends Controller
             'leaderboard' => Inertia::defer(fn () => [
                 'kills' => $this->playerStatsService->getLeaderboard('zombie_kills', 5),
                 'survival' => $this->playerStatsService->getLeaderboard('hours_survived', 5),
+                'deaths' => $this->playerStatsService->getDeathLeaderboard(5),
             ]),
             'game_events' => Inertia::defer(fn () => GameEvent::query()
                 ->orderByDesc('created_at')

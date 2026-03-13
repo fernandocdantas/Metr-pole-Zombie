@@ -12,6 +12,7 @@ require("ZM_GameState")
 require("ZM_PlayerStats")
 require("ZM_RespawnDelay")
 require("ZM_SafeZone")
+require("ZM_PvpTracker")
 
 print("[ZomboidManager] Initializing server-side bridge mod...")
 
@@ -97,6 +98,9 @@ local function onEveryOneMinute()
 
     -- Safe zone: reload config, flush violations
     ZM_SafeZone.tick()
+
+    -- PvP tracker: scan for kills, flush to disk
+    ZM_PvpTracker.tick()
 end
 
 --- OnServerStarted — export game state and item catalog on server boot
@@ -106,6 +110,9 @@ local function onServerStarted()
 
     -- Initialize safe zone system
     ZM_SafeZone.init()
+
+    -- Initialize PvP tracker
+    ZM_PvpTracker.init()
 
     -- Export game state immediately so it's available even when server is paused
     if ZM_GameState.export() then
@@ -123,8 +130,9 @@ end
 -- Register event hooks
 Events.OnCreatePlayer.Add(onCreatePlayer)
 Events.OnWeaponHitCharacter.Add(ZM_SafeZone.onWeaponHitCharacter)
+Events.OnWeaponHitCharacter.Add(ZM_PvpTracker.onWeaponHitCharacter)
 Events.EveryTenMinutes.Add(onEveryTenMinutes)
 Events.EveryOneMinute.Add(onEveryOneMinute)
 Events.OnServerStarted.Add(onServerStarted)
 
-print("[ZomboidManager] Event hooks registered: OnCreatePlayer, OnWeaponHitCharacter, EveryTenMinutes, EveryOneMinute, OnServerStarted")
+print("[ZomboidManager] Event hooks registered: OnCreatePlayer, OnWeaponHitCharacter(2), EveryTenMinutes, EveryOneMinute, OnServerStarted")

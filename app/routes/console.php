@@ -22,6 +22,8 @@ Schedule::command('zomboid:auto-restart-check')->everyMinute();
 
 Schedule::command('zomboid:import-pvp-violations')->everyFiveMinutes();
 
+Schedule::command('zomboid:import-pvp-kills')->everyFiveMinutes();
+
 Schedule::command('zomboid:process-respawn-kicks')->everyFiveMinutes();
 
 Schedule::command('zomboid:parse-game-events')->everyFiveMinutes();

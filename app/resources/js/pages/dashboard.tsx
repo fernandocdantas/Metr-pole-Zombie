@@ -438,9 +438,9 @@ export default function Dashboard({
                                     <Swords className="size-4 text-purple-500" />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-muted-foreground">PvP Hits</p>
+                                    <p className="text-xs text-muted-foreground">PvP Kills</p>
                                     <p className="text-lg font-semibold tabular-nums">
-                                        <AnimatedCounter value={server_totals.total_pvp_hits} />
+                                        <AnimatedCounter value={server_totals.total_pvp_kills} />
                                     </p>
                                 </div>
                             </div>

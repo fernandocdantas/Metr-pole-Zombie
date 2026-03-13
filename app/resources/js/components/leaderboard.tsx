@@ -1,12 +1,13 @@
-import { Clock, Skull, Trophy } from 'lucide-react';
+import { Clock, Medal, Skull, Trophy } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Leaderboard as LeaderboardType } from '@/types';
 
 export function Leaderboard({ data }: { data: LeaderboardType }) {
     const hasKills = data.kills.length > 0;
     const hasSurvival = data.survival.length > 0;
+    const hasDeaths = (data.deaths ?? []).length > 0;
 
-    if (!hasKills && !hasSurvival) {
+    if (!hasKills && !hasSurvival && !hasDeaths) {
         return (
             <Card>
                 <CardHeader>
@@ -33,7 +34,7 @@ export function Leaderboard({ data }: { data: LeaderboardType }) {
                 <CardDescription>Top players by stats</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="grid gap-6 sm:grid-cols-2">
+                <div className="grid gap-6 sm:grid-cols-3">
                     {/* Zombie Kills */}
                     <div>
                         <h4 className="mb-2 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
@@ -88,6 +89,36 @@ export function Leaderboard({ data }: { data: LeaderboardType }) {
                                                 maximumFractionDigits: 1,
                                             })}
                                             h
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">No data</p>
+                        )}
+                    </div>
+
+                    {/* Deaths */}
+                    <div>
+                        <h4 className="mb-2 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                            <Medal className="size-3.5" />
+                            Deaths
+                        </h4>
+                        {hasDeaths ? (
+                            <div className="space-y-1.5">
+                                {(data.deaths ?? []).map((entry, i) => (
+                                    <div
+                                        key={entry.username}
+                                        className="flex items-center justify-between rounded-md px-2 py-1 text-sm"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-5 text-center text-xs font-bold text-muted-foreground">
+                                                {i + 1}
+                                            </span>
+                                            <span className="font-medium">{entry.username}</span>
+                                        </div>
+                                        <span className="tabular-nums">
+                                            {entry.death_count.toLocaleString()}
                                         </span>
                                     </div>
                                 ))}

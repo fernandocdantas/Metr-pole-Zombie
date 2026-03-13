@@ -31,7 +31,7 @@ export type ServerStats = {
     total_zombie_kills: number;
     total_hours_survived: number;
     total_deaths: number;
-    total_pvp_hits: number;
+    total_pvp_kills: number;
     most_popular_profession: string | null;
 };
 
@@ -106,11 +106,12 @@ export type PlayerStatEntry = {
 export type Leaderboard = {
     kills: PlayerStatEntry[];
     survival: PlayerStatEntry[];
+    deaths: DeathLeaderboardEntry[];
 };
 
 export type GameEventEntry = {
     id: number;
-    event_type: 'death' | 'pvp_hit' | 'craft' | 'connect' | 'disconnect';
+    event_type: 'death' | 'pvp_hit' | 'pvp_kill' | 'craft' | 'connect' | 'disconnect';
     player: string;
     target: string | null;
     details: Record<string, unknown> | null;
@@ -179,11 +180,22 @@ export type PlayerProfile = {
     recent_events: GameEventEntry[];
 };
 
+export type RatioLeaderboardEntry = {
+    rank: number;
+    username: string;
+    ratio: number;
+    numerator: number;
+    death_count: number;
+};
+
 export type RankingsPageData = {
     server_stats: ServerStats;
     leaderboard_kills: LeaderboardEntry[];
     leaderboard_survival: LeaderboardEntry[];
     leaderboard_deaths: DeathLeaderboardEntry[];
+    leaderboard_kd: RatioLeaderboardEntry[];
+    leaderboard_hd: RatioLeaderboardEntry[];
+    leaderboard_pvpd: RatioLeaderboardEntry[];
     server_name: string;
 };
 

@@ -18,7 +18,8 @@ test('getServerStats returns correct aggregations', function () {
     GameEvent::query()->create(['event_type' => 'death', 'player' => 'Alice']);
     GameEvent::query()->create(['event_type' => 'death', 'player' => 'Bob']);
     GameEvent::query()->create(['event_type' => 'death', 'player' => 'Alice']);
-    GameEvent::query()->create(['event_type' => 'pvp_hit', 'player' => 'Bob', 'target' => 'Alice']);
+    GameEvent::query()->create(['event_type' => 'pvp_kill', 'player' => 'Bob', 'target' => 'Alice']);
+    GameEvent::query()->create(['event_type' => 'pvp_hit', 'player' => 'Bob', 'target' => 'Alice']); // hits don't count
 
     $service = new PlayerStatsService('/nonexistent');
     $stats = $service->getServerStats();
@@ -27,7 +28,7 @@ test('getServerStats returns correct aggregations', function () {
         ->and($stats['total_zombie_kills'])->toBe(225)
         ->and($stats['total_hours_survived'])->toBe(45.5)
         ->and($stats['total_deaths'])->toBe(3)
-        ->and($stats['total_pvp_hits'])->toBe(1)
+        ->and($stats['total_pvp_kills'])->toBe(1)
         ->and($stats['most_popular_profession'])->toBe('Lumberjack');
 });
 
@@ -67,6 +68,69 @@ test('getDeathLeaderboard counts correctly', function () {
         ->and($leaderboard[1]['rank'])->toBe(2)
         ->and($leaderboard[1]['username'])->toBe('Bob')
         ->and($leaderboard[1]['death_count'])->toBe(1);
+});
+
+test('getRatioLeaderboard kills_per_death computes correctly', function () {
+    PlayerStat::query()->create(['username' => 'Alice', 'zombie_kills' => 100, 'hours_survived' => 20]);
+    PlayerStat::query()->create(['username' => 'Bob', 'zombie_kills' => 50, 'hours_survived' => 10]);
+    PlayerStat::query()->create(['username' => 'Charlie', 'zombie_kills' => 200, 'hours_survived' => 30]);
+
+    // Alice: 2 deaths → 50 k/d, Bob: 1 death → 50 k/d, Charlie: 0 deaths → excluded
+    GameEvent::query()->create(['event_type' => 'death', 'player' => 'Alice']);
+    GameEvent::query()->create(['event_type' => 'death', 'player' => 'Alice']);
+    GameEvent::query()->create(['event_type' => 'death', 'player' => 'Bob']);
+
+    $service = new PlayerStatsService('/nonexistent');
+    $leaderboard = $service->getRatioLeaderboard('kills_per_death', 25);
+
+    expect($leaderboard)->toHaveCount(2)
+        ->and($leaderboard[0]['username'])->toBe('Alice')
+        ->and($leaderboard[0]['ratio'])->toBe(50.0)
+        ->and($leaderboard[0]['numerator'])->toBe(100)
+        ->and($leaderboard[0]['death_count'])->toBe(2)
+        ->and($leaderboard[1]['username'])->toBe('Bob')
+        ->and($leaderboard[1]['ratio'])->toBe(50.0)
+        ->and($leaderboard[1]['numerator'])->toBe(50)
+        ->and($leaderboard[1]['death_count'])->toBe(1);
+});
+
+test('getRatioLeaderboard excludes players with 0 deaths', function () {
+    PlayerStat::query()->create(['username' => 'Alice', 'zombie_kills' => 100, 'hours_survived' => 20]);
+    // No deaths for Alice
+
+    $service = new PlayerStatsService('/nonexistent');
+    $leaderboard = $service->getRatioLeaderboard('kills_per_death', 25);
+
+    expect($leaderboard)->toHaveCount(0);
+});
+
+test('getRatioLeaderboard pvp_per_death computes correctly', function () {
+    PlayerStat::query()->create(['username' => 'Alice', 'zombie_kills' => 0, 'hours_survived' => 5]);
+    PlayerStat::query()->create(['username' => 'Bob', 'zombie_kills' => 0, 'hours_survived' => 5]);
+
+    // Alice: 3 pvp kills, 1 death → ratio 3.0
+    GameEvent::query()->create(['event_type' => 'pvp_kill', 'player' => 'Alice', 'target' => 'Bob']);
+    GameEvent::query()->create(['event_type' => 'pvp_kill', 'player' => 'Alice', 'target' => 'Bob']);
+    GameEvent::query()->create(['event_type' => 'pvp_kill', 'player' => 'Alice', 'target' => 'Bob']);
+    GameEvent::query()->create(['event_type' => 'death', 'player' => 'Alice']);
+
+    // Bob: 1 pvp kill, 2 deaths → ratio 0.5
+    GameEvent::query()->create(['event_type' => 'pvp_kill', 'player' => 'Bob', 'target' => 'Alice']);
+    GameEvent::query()->create(['event_type' => 'death', 'player' => 'Bob']);
+    GameEvent::query()->create(['event_type' => 'death', 'player' => 'Bob']);
+
+    $service = new PlayerStatsService('/nonexistent');
+    $leaderboard = $service->getRatioLeaderboard('pvp_per_death', 25);
+
+    expect($leaderboard)->toHaveCount(2)
+        ->and($leaderboard[0]['username'])->toBe('Alice')
+        ->and($leaderboard[0]['ratio'])->toBe(3.0)
+        ->and($leaderboard[0]['numerator'])->toBe(3)
+        ->and($leaderboard[0]['death_count'])->toBe(1)
+        ->and($leaderboard[1]['username'])->toBe('Bob')
+        ->and($leaderboard[1]['ratio'])->toBe(0.5)
+        ->and($leaderboard[1]['numerator'])->toBe(1)
+        ->and($leaderboard[1]['death_count'])->toBe(2);
 });
 
 test('getPlayerProfile returns null for non-existent user', function () {

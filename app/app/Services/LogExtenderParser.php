@@ -328,6 +328,6 @@ class LogExtenderParser
     private function saveOffset(string $file): void
     {
         $key = 'log_extender_offset:'.md5($file);
-        Cache::put($key, $this->lastReadPosition, now()->addDays(7));
+        Cache::forever($key, $this->lastReadPosition);
     }
 }

@@ -68,7 +68,7 @@ class PlayerStatsService
     /**
      * Get aggregated server-wide stats.
      *
-     * @return array{total_players: int, total_zombie_kills: int, total_hours_survived: float, total_deaths: int, total_pvp_hits: int, most_popular_profession: string|null}
+     * @return array{total_players: int, total_zombie_kills: int, total_hours_survived: float, total_deaths: int, total_pvp_kills: int, most_popular_profession: string|null}
      */
     public function getServerStats(): array
     {
@@ -82,8 +82,8 @@ class PlayerStatsService
             ->where('event_type', 'death')
             ->count();
 
-        $totalPvpHits = GameEvent::query()
-            ->where('event_type', 'pvp_hit')
+        $totalPvpKills = GameEvent::query()
+            ->where('event_type', 'pvp_kill')
             ->count();
 
         $mostPopularProfession = PlayerStat::query()
@@ -99,7 +99,7 @@ class PlayerStatsService
             'total_zombie_kills' => (int) $playerAggregates->total_zombie_kills,
             'total_hours_survived' => (float) $playerAggregates->total_hours_survived,
             'total_deaths' => $totalDeaths,
-            'total_pvp_hits' => $totalPvpHits,
+            'total_pvp_kills' => $totalPvpKills,
             'most_popular_profession' => $mostPopularProfession,
         ];
     }
@@ -146,6 +146,55 @@ class PlayerStatsService
             ->map(fn ($row, int $index) => [
                 'rank' => $index + 1,
                 'username' => $row->username,
+                'death_count' => (int) $row->death_count,
+            ])
+            ->all();
+    }
+
+    /**
+     * Get a ratio leaderboard (stat per death).
+     *
+     * @param  string  $ratioType  One of: kills_per_death, hours_per_death, pvp_per_death
+     * @return array<int, array{rank: int, username: string, ratio: float, numerator: int|float, death_count: int}>
+     */
+    public function getRatioLeaderboard(string $ratioType, int $limit = 25): array
+    {
+        $deathSubquery = DB::table('game_events')
+            ->where('event_type', 'death')
+            ->select('player')
+            ->selectRaw('COUNT(*) as death_count')
+            ->groupBy('player');
+
+        $query = match ($ratioType) {
+            'kills_per_death' => DB::table('player_stats')
+                ->joinSub($deathSubquery, 'deaths', 'player_stats.username', '=', 'deaths.player')
+                ->selectRaw('player_stats.username, player_stats.zombie_kills as numerator, deaths.death_count, 1.0 * player_stats.zombie_kills / deaths.death_count as ratio')
+                ->orderByDesc('ratio'),
+            'hours_per_death' => DB::table('player_stats')
+                ->joinSub($deathSubquery, 'deaths', 'player_stats.username', '=', 'deaths.player')
+                ->selectRaw('player_stats.username, player_stats.hours_survived as numerator, deaths.death_count, 1.0 * player_stats.hours_survived / deaths.death_count as ratio')
+                ->orderByDesc('ratio'),
+            'pvp_per_death' => DB::table('game_events')
+                ->where('game_events.event_type', 'pvp_kill')
+                ->select('game_events.player as username')
+                ->selectRaw('COUNT(*) as numerator')
+                ->groupBy('game_events.player')
+                ->joinSub($deathSubquery, 'deaths', 'game_events.player', '=', 'deaths.player')
+                ->selectRaw('deaths.death_count, 1.0 * COUNT(*) / deaths.death_count as ratio')
+                ->groupBy('deaths.death_count')
+                ->orderByDesc('ratio'),
+            default => throw new \InvalidArgumentException("Unknown ratio type: {$ratioType}"),
+        };
+
+        return $query
+            ->limit($limit)
+            ->get()
+            ->values()
+            ->map(fn ($row, int $index) => [
+                'rank' => $index + 1,
+                'username' => $row->username,
+                'ratio' => round((float) $row->ratio, 2),
+                'numerator' => $ratioType === 'hours_per_death' ? round((float) $row->numerator, 1) : (int) $row->numerator,
                 'death_count' => (int) $row->death_count,
             ])
             ->all();

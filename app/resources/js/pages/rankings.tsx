@@ -1,5 +1,5 @@
 import { Deferred, Head, Link } from '@inertiajs/react';
-import { Clock, Medal, Skull, Swords, Trophy, Users } from 'lucide-react';
+import { Clock, Crosshair, Medal, Skull, Swords, Trophy, Users } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { AnimatedCounter } from '@/components/animated-counter';
@@ -7,9 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicLayout from '@/layouts/public-layout';
-import type { DeathLeaderboardEntry, LeaderboardEntry, RankingsPageData } from '@/types';
+import type { DeathLeaderboardEntry, LeaderboardEntry, RankingsPageData, RatioLeaderboardEntry } from '@/types';
 
-type TabKey = 'kills' | 'survival' | 'deaths';
+type TabKey = 'kills' | 'survival' | 'deaths' | 'kd' | 'hd' | 'pvpd';
 
 function RankBadge({ rank }: { rank: number }) {
     if (rank === 1) {
@@ -140,6 +140,41 @@ function DeathsTable({ data }: { data: DeathLeaderboardEntry[] }) {
     );
 }
 
+function RatioTable({ data, unit }: { data: RatioLeaderboardEntry[]; unit?: string }) {
+    if (data.length === 0) {
+        return <p className="py-8 text-center text-sm text-muted-foreground">No players with at least 1 death yet</p>;
+    }
+
+    return (
+        <div className="space-y-1">
+            {data.map((entry, i) => (
+                <motion.div
+                    key={entry.username}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: i * 0.03 }}
+                >
+                    <Link
+                        href={`/rankings/${entry.username}`}
+                        className="flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted/50"
+                    >
+                        <div className="flex items-center gap-3">
+                            <RankBadge rank={entry.rank} />
+                            <span className="font-medium">{entry.username}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                                ({entry.numerator.toLocaleString(undefined, { maximumFractionDigits: 1 })}{unit ?? ''} / {entry.death_count}d)
+                            </span>
+                            <span className="font-semibold tabular-nums">{entry.ratio.toFixed(2)}</span>
+                        </div>
+                    </Link>
+                </motion.div>
+            ))}
+        </div>
+    );
+}
+
 function LeaderboardSkeleton() {
     return (
         <div className="space-y-2 py-2">
@@ -160,6 +195,9 @@ const tabs: { key: TabKey; label: string; icon: typeof Skull }[] = [
     { key: 'kills', label: 'Zombie Kills', icon: Skull },
     { key: 'survival', label: 'Hours Survived', icon: Clock },
     { key: 'deaths', label: 'Deaths', icon: Medal },
+    { key: 'kd', label: 'Kills/Death', icon: Crosshair },
+    { key: 'hd', label: 'Hours/Death', icon: Clock },
+    { key: 'pvpd', label: 'PvP Kills/Death', icon: Swords },
 ];
 
 export default function Rankings({
@@ -167,6 +205,9 @@ export default function Rankings({
     leaderboard_kills,
     leaderboard_survival,
     leaderboard_deaths,
+    leaderboard_kd,
+    leaderboard_hd,
+    leaderboard_pvpd,
 }: RankingsPageData) {
     const [activeTab, setActiveTab] = useState<TabKey>('kills');
 
@@ -237,9 +278,9 @@ export default function Rankings({
                                     <Swords className="size-5 text-purple-500" />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-muted-foreground">PvP Hits</p>
+                                    <p className="text-xs text-muted-foreground">PvP Kills</p>
                                     <p className="text-2xl font-bold tabular-nums">
-                                        <AnimatedCounter value={server_stats.total_pvp_hits} />
+                                        <AnimatedCounter value={server_stats.total_pvp_kills} />
                                     </p>
                                 </div>
                             </CardContent>
@@ -255,7 +296,7 @@ export default function Rankings({
                                     Leaderboards
                                 </CardTitle>
                             </div>
-                            <div className="flex gap-1 border-b border-border pt-2">
+                            <div className="flex gap-1 overflow-x-auto border-b border-border pt-2">
                                 {tabs.map((tab) => (
                                     <button
                                         key={tab.key}
@@ -286,6 +327,21 @@ export default function Rankings({
                             {activeTab === 'deaths' && (
                                 <Deferred data="leaderboard_deaths" fallback={<LeaderboardSkeleton />}>
                                     <DeathsTable data={leaderboard_deaths ?? []} />
+                                </Deferred>
+                            )}
+                            {activeTab === 'kd' && (
+                                <Deferred data="leaderboard_kd" fallback={<LeaderboardSkeleton />}>
+                                    <RatioTable data={leaderboard_kd ?? []} />
+                                </Deferred>
+                            )}
+                            {activeTab === 'hd' && (
+                                <Deferred data="leaderboard_hd" fallback={<LeaderboardSkeleton />}>
+                                    <RatioTable data={leaderboard_hd ?? []} unit="h" />
+                                </Deferred>
+                            )}
+                            {activeTab === 'pvpd' && (
+                                <Deferred data="leaderboard_pvpd" fallback={<LeaderboardSkeleton />}>
+                                    <RatioTable data={leaderboard_pvpd ?? []} />
                                 </Deferred>
                             )}
                         </CardContent>
