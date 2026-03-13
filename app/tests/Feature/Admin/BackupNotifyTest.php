@@ -239,3 +239,53 @@ describe('Rollback with countdown', function () {
             ->assertForbidden();
     });
 });
+
+// ── Bulk Delete ──────────────────────────────────────────────────────
+
+describe('Bulk delete backups', function () {
+    it('deletes multiple backups at once', function () {
+        $backupManager = Mockery::mock(BackupManager::class);
+        $backupManager->shouldReceive('deleteBackup')->times(3);
+        app()->instance(BackupManager::class, $backupManager);
+
+        $backups = Backup::factory()->count(3)->create();
+
+        $this->actingAs($this->admin)
+            ->deleteJson(route('admin.backups.destroy-bulk'), [
+                'ids' => $backups->pluck('id')->all(),
+            ])
+            ->assertOk()
+            ->assertJson(['message' => 'Deleted 3 backup(s)']);
+
+        expect(AuditLog::where('action', 'backup.delete.bulk')->exists())->toBeTrue();
+    });
+
+    it('rejects empty ids array', function () {
+        $this->actingAs($this->admin)
+            ->deleteJson(route('admin.backups.destroy-bulk'), [
+                'ids' => [],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('ids');
+    });
+
+    it('rejects invalid backup ids', function () {
+        $this->actingAs($this->admin)
+            ->deleteJson(route('admin.backups.destroy-bulk'), [
+                'ids' => ['not-a-valid-uuid'],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('ids.0');
+    });
+
+    it('requires admin authentication for bulk delete', function () {
+        $player = User::factory()->create(['role' => UserRole::Player]);
+        $backups = Backup::factory()->count(2)->create();
+
+        $this->actingAs($player)
+            ->deleteJson(route('admin.backups.destroy-bulk'), [
+                'ids' => $backups->pluck('id')->all(),
+            ])
+            ->assertForbidden();
+    });
+});

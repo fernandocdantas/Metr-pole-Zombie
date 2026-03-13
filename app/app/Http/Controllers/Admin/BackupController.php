@@ -35,10 +35,12 @@ class BackupController extends Controller
             $query->where('type', $type);
         }
 
-        $backups = $query->paginate(15);
+        $perPage = min((int) $request->query('per_page', 15), 50);
+        $backups = $query->paginate($perPage)->withQueryString()
+            ->through(fn ($backup) => (new BackupResource($backup))->resolve());
 
         return Inertia::render('admin/backups', [
-            'backups' => Inertia::defer(fn () => BackupResource::collection($backups)),
+            'backups' => Inertia::defer(fn () => $backups),
             'current_version' => $this->versionReader->getCachedVersion(),
             'current_branch' => $this->versionReader->getCurrentBranch(),
         ]);
@@ -87,6 +89,31 @@ class BackupController extends Controller
         );
 
         return response()->json(['message' => "Deleted {$filename}"]);
+    }
+
+    public function destroyBulk(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'required|uuid|exists:backups,id',
+        ]);
+
+        $backups = Backup::query()->whereIn('id', $validated['ids'])->get();
+        $count = $backups->count();
+
+        foreach ($backups as $backup) {
+            $this->backupManager->deleteBackup($backup);
+        }
+
+        $this->auditLogger->log(
+            actor: $request->user()->name ?? 'admin',
+            action: 'backup.delete.bulk',
+            target: "{$count} backups",
+            details: ['ids' => $validated['ids']],
+            ip: $request->ip(),
+        );
+
+        return response()->json(['message' => "Deleted {$count} backup(s)"]);
     }
 
     public function rollback(Request $request, Backup $backup): JsonResponse

@@ -51,6 +51,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         // Backups
         Route::get('backups', [Admin\BackupController::class, 'index'])->name('backups');
         Route::post('backups', [Admin\BackupController::class, 'store'])->name('backups.store');
+        Route::delete('backups', [Admin\BackupController::class, 'destroyBulk'])->name('backups.destroy-bulk');
         Route::delete('backups/{backup}', [Admin\BackupController::class, 'destroy'])->name('backups.destroy');
         Route::post('backups/{backup}/rollback', [Admin\BackupController::class, 'rollback'])->name('backups.rollback');
 

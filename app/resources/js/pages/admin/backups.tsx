@@ -1,5 +1,5 @@
 import { Deferred, Head, router } from '@inertiajs/react';
-import { AlertTriangle, Archive, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { AlertTriangle, Archive, ChevronLeft, ChevronRight, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,7 @@ type PaginatedBackups = {
     data: BackupEntry[];
     current_page: number;
     last_page: number;
+    per_page: number;
     total: number;
 };
 
@@ -50,6 +51,8 @@ const COUNTDOWN_OPTIONS = [
     { value: '1800', label: '30 minutes' },
     { value: '3600', label: '60 minutes' },
 ] as const;
+
+const PER_PAGE_OPTIONS = ['10', '15', '25', '50'] as const;
 
 const typeColors: Record<string, string> = {
     manual: 'bg-blue-500/10 text-blue-500',
@@ -77,12 +80,36 @@ export default function Backups({ backups, current_version, current_branch }: Ba
     const [rollbackMessage, setRollbackMessage] = useState('');
     const [switchBranch, setSwitchBranch] = useState(false);
     const [search, setSearch] = useState('');
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [showBulkDelete, setShowBulkDelete] = useState(false);
 
     const filteredBackups = useMemo(() => {
         if (!backups?.data || !search) return backups?.data ?? [];
         const q = search.toLowerCase();
         return backups.data.filter((b) => b.filename.toLowerCase().includes(q));
     }, [backups?.data, search]);
+
+    const allSelected = filteredBackups.length > 0 && filteredBackups.every((b) => selectedIds.has(b.id));
+
+    function toggleSelect(id: string) {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    }
+
+    function toggleSelectAll() {
+        if (allSelected) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filteredBackups.map((b) => b.id)));
+        }
+    }
 
     async function createBackup() {
         setLoading(true);
@@ -143,6 +170,31 @@ export default function Backups({ backups, current_version, current_branch }: Ba
         router.reload();
     }
 
+    async function deleteBulk() {
+        setLoading(true);
+        await fetchAction('/admin/backups', {
+            method: 'DELETE',
+            data: { ids: Array.from(selectedIds) },
+            successMessage: `Deleted ${selectedIds.size} backup(s)`,
+        });
+        setLoading(false);
+        setShowBulkDelete(false);
+        setSelectedIds(new Set());
+        router.reload();
+    }
+
+    function goToPage(page: number) {
+        const params: Record<string, unknown> = { page };
+        if (backups?.per_page && backups.per_page !== 15) {
+            params.per_page = backups.per_page;
+        }
+        router.get('/admin/backups', params, { preserveState: true });
+    }
+
+    function changePerPage(value: string) {
+        router.get('/admin/backups', { per_page: value, page: 1 }, { preserveState: true });
+    }
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Backups" />
@@ -152,10 +204,21 @@ export default function Backups({ backups, current_version, current_branch }: Ba
                         <h1 className="text-2xl font-bold tracking-tight">Backup Management</h1>
                         <p className="text-muted-foreground">{backups ? `${backups.total} backup${backups.total !== 1 ? 's' : ''}` : 'Loading...'}</p>
                     </div>
-                    <Button onClick={() => setShowCreate(true)}>
-                        <Plus className="mr-1.5 size-4" />
-                        Create Backup
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {selectedIds.size > 0 && (
+                            <Button
+                                variant="destructive"
+                                onClick={() => setShowBulkDelete(true)}
+                            >
+                                <Trash2 className="mr-1.5 size-4" />
+                                Delete {selectedIds.size} Selected
+                            </Button>
+                        )}
+                        <Button onClick={() => setShowCreate(true)}>
+                            <Plus className="mr-1.5 size-4" />
+                            Create Backup
+                        </Button>
+                    </div>
                 </div>
 
                 <Card>
@@ -184,6 +247,7 @@ export default function Backups({ backups, current_version, current_branch }: Ba
                             <Table>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead className="w-10" />
                                         <TableHead>Filename</TableHead>
                                         <TableHead className="hidden sm:table-cell">Type</TableHead>
                                         <TableHead className="hidden md:table-cell">Version</TableHead>
@@ -196,6 +260,7 @@ export default function Backups({ backups, current_version, current_branch }: Ba
                                 <TableBody>
                                     {Array.from({ length: 5 }).map((_, i) => (
                                         <TableRow key={i}>
+                                            <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                                             <TableCell><Skeleton className="h-4 w-48" /></TableCell>
                                             <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
                                             <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
@@ -217,6 +282,13 @@ export default function Backups({ backups, current_version, current_branch }: Ba
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead className="w-10">
+                                                <Checkbox
+                                                    checked={allSelected}
+                                                    onCheckedChange={toggleSelectAll}
+                                                    aria-label="Select all"
+                                                />
+                                            </TableHead>
                                             <TableHead>Filename</TableHead>
                                             <TableHead className="hidden sm:table-cell">Type</TableHead>
                                             <TableHead className="hidden md:table-cell">Version</TableHead>
@@ -228,7 +300,14 @@ export default function Backups({ backups, current_version, current_branch }: Ba
                                     </TableHeader>
                                     <TableBody>
                                         {filteredBackups.map((backup) => (
-                                            <TableRow key={backup.id}>
+                                            <TableRow key={backup.id} data-state={selectedIds.has(backup.id) ? 'selected' : undefined}>
+                                                <TableCell>
+                                                    <Checkbox
+                                                        checked={selectedIds.has(backup.id)}
+                                                        onCheckedChange={() => toggleSelect(backup.id)}
+                                                        aria-label={`Select ${backup.filename}`}
+                                                    />
+                                                </TableCell>
                                                 <TableCell className="font-medium text-sm">{backup.filename}</TableCell>
                                                 <TableCell className="hidden sm:table-cell">
                                                     <Badge className={`text-xs ${typeColors[backup.type] ?? ''}`}>
@@ -280,18 +359,60 @@ export default function Backups({ backups, current_version, current_branch }: Ba
                             )}
 
                             {/* Pagination */}
-                            {backups?.last_page > 1 && (
-                                <div className="mt-4 flex items-center justify-center gap-2">
-                                    {Array.from({ length: backups.last_page }, (_, i) => i + 1).map((page) => (
-                                        <Button
-                                            key={page}
-                                            variant={page === backups.current_page ? 'default' : 'outline'}
-                                            size="sm"
-                                            onClick={() => router.get('/admin/backups', { page }, { preserveState: true })}
+                            {backups && backups.total > 0 && (
+                                <div className="mt-4 flex flex-col items-center justify-between gap-3 sm:flex-row">
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <span>Rows per page</span>
+                                        <Select
+                                            value={String(backups.per_page)}
+                                            onValueChange={changePerPage}
                                         >
-                                            {page}
-                                        </Button>
-                                    ))}
+                                            <SelectTrigger className="h-8 w-[70px]">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {PER_PAGE_OPTIONS.map((opt) => (
+                                                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <span>
+                                            {(backups.current_page - 1) * backups.per_page + 1}
+                                            &ndash;
+                                            {Math.min(backups.current_page * backups.per_page, backups.total)}
+                                            {' '}of {backups.total}
+                                        </span>
+                                    </div>
+                                    {backups.last_page > 1 && (
+                                        <div className="flex items-center gap-1">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={backups.current_page <= 1}
+                                                onClick={() => goToPage(backups.current_page - 1)}
+                                            >
+                                                <ChevronLeft className="size-4" />
+                                            </Button>
+                                            {Array.from({ length: backups.last_page }, (_, i) => i + 1).map((page) => (
+                                                <Button
+                                                    key={page}
+                                                    variant={page === backups.current_page ? 'default' : 'outline'}
+                                                    size="sm"
+                                                    onClick={() => goToPage(page)}
+                                                >
+                                                    {page}
+                                                </Button>
+                                            ))}
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={backups.current_page >= backups.last_page}
+                                                onClick={() => goToPage(backups.current_page + 1)}
+                                            >
+                                                <ChevronRight className="size-4" />
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </Deferred>
@@ -439,7 +560,7 @@ export default function Backups({ backups, current_version, current_branch }: Ba
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirmation */}
+            {/* Delete Single Confirmation */}
             <Dialog open={deleteTarget !== null} onOpenChange={() => setDeleteTarget(null)}>
                 <DialogContent>
                     <DialogHeader>
@@ -456,6 +577,28 @@ export default function Backups({ backups, current_version, current_branch }: Ba
                             onClick={() => deleteTarget && deleteBackup(deleteTarget)}
                         >
                             Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Bulk Confirmation */}
+            <Dialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete {selectedIds.size} Backup{selectedIds.size !== 1 ? 's' : ''}</DialogTitle>
+                        <DialogDescription>
+                            Permanently delete <strong>{selectedIds.size}</strong> selected backup{selectedIds.size !== 1 ? 's' : ''}? This cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowBulkDelete(false)}>Cancel</Button>
+                        <Button
+                            variant="destructive"
+                            disabled={loading}
+                            onClick={deleteBulk}
+                        >
+                            Delete {selectedIds.size} Backup{selectedIds.size !== 1 ? 's' : ''}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
