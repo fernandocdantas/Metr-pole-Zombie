@@ -379,7 +379,7 @@ export type WalletTransaction = {
     type: 'credit' | 'debit' | 'refund';
     amount: string;
     balance_after: string;
-    source: 'admin_award' | 'purchase' | 'refund' | 'system' | 'payment';
+    source: 'admin_award' | 'purchase' | 'refund' | 'system' | 'payment' | 'in_game_deposit';
     description: string | null;
     created_at: string;
 };
@@ -412,6 +412,17 @@ export type ShopDelivery = {
     delivered_at: string | null;
     error_message: string | null;
     created_at: string;
+};
+
+export type DepositResult = {
+    id: string;
+    username: string;
+    status: 'success' | 'failed';
+    money_count: number;
+    stack_count: number;
+    total_coins: number;
+    message: string | null;
+    processed_at: string;
 };
 
 export type WalletUser = {

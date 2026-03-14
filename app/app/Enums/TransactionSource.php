@@ -9,4 +9,5 @@ enum TransactionSource: string
     case Refund = 'refund';
     case System = 'system';
     case Payment = 'payment';
+    case InGameDeposit = 'in_game_deposit';
 }

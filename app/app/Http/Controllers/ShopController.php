@@ -8,11 +8,14 @@ use App\Models\ShopBundle;
 use App\Models\ShopCategory;
 use App\Models\ShopItem;
 use App\Models\ShopPromotion;
+use App\Models\WhitelistEntry;
 use App\Services\ItemIconResolver;
+use App\Services\MoneyDepositManager;
 use App\Services\PromotionEngine;
 use App\Services\ShopPurchaseService;
 use App\Services\WalletService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,6 +26,7 @@ class ShopController extends Controller
         private readonly WalletService $walletService,
         private readonly PromotionEngine $promotionEngine,
         private readonly ItemIconResolver $iconResolver,
+        private readonly MoneyDepositManager $depositManager,
     ) {}
 
     /**
@@ -59,14 +63,43 @@ class ShopController extends Controller
                 ]),
             ]);
 
+        $activePromotions = ShopPromotion::query()
+            ->whereNotNull('code')
+            ->where('is_active', true)
+            ->where('starts_at', '<=', now())
+            ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>', now()))
+            ->get(['name', 'code', 'type', 'value', 'ends_at']);
+
         $user = request()->user();
         $balance = $user ? $this->walletService->getBalance($user) : null;
+
+        $hasPzAccount = false;
+        $pendingDeposit = false;
+        $lastDepositResult = null;
+
+        if ($user) {
+            $whitelistEntry = WhitelistEntry::query()
+                ->where('user_id', $user->id)
+                ->where('active', true)
+                ->first();
+
+            $hasPzAccount = $whitelistEntry !== null;
+
+            if ($hasPzAccount) {
+                $pendingDeposit = $this->depositManager->hasPendingRequest($whitelistEntry->pz_username);
+                $lastDepositResult = $this->depositManager->getLastResult($whitelistEntry->pz_username);
+            }
+        }
 
         return Inertia::render('shop/index', [
             'categories' => $categories,
             'items' => $items,
             'bundles' => $bundles,
             'balance' => $balance,
+            'activePromotions' => $activePromotions,
+            'hasPzAccount' => $hasPzAccount,
+            'pendingDeposit' => $pendingDeposit,
+            'lastDepositResult' => $lastDepositResult,
         ]);
     }
 
@@ -218,6 +251,34 @@ class ShopController extends Controller
         return Inertia::render('shop/my-purchases', [
             'purchases' => $purchases,
             'balance' => $this->walletService->getBalance(request()->user()),
+        ]);
+    }
+
+    /**
+     * Request an in-game money deposit.
+     */
+    public function requestDeposit(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $whitelistEntry = WhitelistEntry::query()
+            ->where('user_id', $user->id)
+            ->where('active', true)
+            ->first();
+
+        if (! $whitelistEntry) {
+            return response()->json(['error' => 'No linked PZ account found'], 422);
+        }
+
+        if ($this->depositManager->hasPendingRequest($whitelistEntry->pz_username)) {
+            return response()->json(['error' => 'A deposit request is already pending'], 422);
+        }
+
+        $entry = $this->depositManager->createRequest($whitelistEntry->pz_username);
+
+        return response()->json([
+            'message' => 'Deposit request created. Make sure you are online in-game — your money will be collected within ~15 seconds.',
+            'request_id' => $entry['id'],
         ]);
     }
 

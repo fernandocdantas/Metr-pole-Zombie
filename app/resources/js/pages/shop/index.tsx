@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { Coins, Package, Search, ShoppingBag, Star } from 'lucide-react';
+import { ArrowDownToLine, CheckCircle, Coins, Copy, Loader2, Package, Search, ShoppingBag, Star, Tag, XCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,13 +16,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import PublicLayout from '@/layouts/public-layout';
 import { fetchAction } from '@/lib/fetch-action';
-import type { ShopBundle, ShopCategory, ShopItem } from '@/types/server';
+import type { DepositResult, ShopBundle, ShopCategory, ShopItem, ShopPromotion } from '@/types/server';
+
+type ActivePromotion = Pick<ShopPromotion, 'name' | 'code' | 'type' | 'value' | 'ends_at'>;
 
 type Props = {
     categories: ShopCategory[];
     items: ShopItem[];
     bundles: ShopBundle[];
     balance: number | null;
+    activePromotions: ActivePromotion[];
+    hasPzAccount: boolean;
+    pendingDeposit: boolean;
+    lastDepositResult: DepositResult | null;
 };
 
 function ItemIcon({ src, name, size = 48 }: { src: string; name: string; size?: number }) {
@@ -40,7 +46,45 @@ function ItemIcon({ src, name, size = 48 }: { src: string; name: string; size?: 
     );
 }
 
-export default function ShopIndex({ categories, items, bundles, balance }: Props) {
+function formatDiscount(type: string, value: string): string {
+    return type === 'percentage' ? `${parseFloat(value)}% OFF` : `${parseFloat(value).toFixed(2)} OFF`;
+}
+
+function PromoRibbon({ promotions }: { promotions: ActivePromotion[] }) {
+    if (promotions.length === 0) return null;
+
+    function copyCode(code: string) {
+        navigator.clipboard.writeText(code);
+    }
+
+    return (
+        <div className="space-y-2">
+            {promotions.map((promo) => (
+                <div
+                    key={promo.code}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 dark:border-amber-700 dark:bg-amber-950/40"
+                >
+                    <div className="flex items-center gap-2">
+                        <Tag className="size-4 text-amber-600 dark:text-amber-400" />
+                        <span className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                            {promo.name} — {formatDiscount(promo.type, promo.value)}
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => copyCode(promo.code!)}
+                        className="flex items-center gap-1.5 rounded-md bg-amber-200/60 px-3 py-1 text-sm font-mono font-bold text-amber-900 transition-colors hover:bg-amber-200 dark:bg-amber-800/40 dark:text-amber-100 dark:hover:bg-amber-800/60"
+                    >
+                        {promo.code}
+                        <Copy className="size-3.5" />
+                    </button>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+export default function ShopIndex({ categories, items, bundles, balance, activePromotions, hasPzAccount, pendingDeposit, lastDepositResult }: Props) {
     const { auth } = usePage().props;
     const isAuthenticated = !!auth.user;
     const [filter, setFilter] = useState('');
@@ -50,6 +94,7 @@ export default function ShopIndex({ categories, items, bundles, balance }: Props
     const [quantity, setQuantity] = useState(1);
     const [promoCode, setPromoCode] = useState('');
     const [loading, setLoading] = useState(false);
+    const [depositLoading, setDepositLoading] = useState(false);
 
     const filteredItems = useMemo(() => {
         let result = items;
@@ -104,6 +149,17 @@ export default function ShopIndex({ categories, items, bundles, balance }: Props
         }
     }
 
+    async function handleDeposit() {
+        setDepositLoading(true);
+        const result = await fetchAction('/shop/deposit', {
+            successMessage: 'Deposit request sent! Stay online in-game.',
+        });
+        setDepositLoading(false);
+        if (result) {
+            router.reload();
+        }
+    }
+
     function handleItemClick(clickedItem: ShopItem) {
         if (!isAuthenticated) {
             router.visit('/login');
@@ -140,6 +196,101 @@ export default function ShopIndex({ categories, items, bundles, balance }: Props
                         </div>
                     )}
                 </div>
+
+                {/* Promo ribbon */}
+                <PromoRibbon promotions={activePromotions} />
+
+                {/* Deposit In-Game Money */}
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center gap-2">
+                            <ArrowDownToLine className="size-5 text-green-600 dark:text-green-400" />
+                            <CardTitle>Deposit In-Game Money</CardTitle>
+                        </div>
+                        <CardDescription>
+                            Convert Money and MoneyStack items from your inventory into shop coins
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            {/* How It Works */}
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium">How It Works</p>
+                                <ol className="text-muted-foreground space-y-1 text-sm">
+                                    <li>1. Make sure you are online in-game</li>
+                                    <li>2. Click "Deposit" below</li>
+                                    <li>3. Within ~15 seconds, all Money and MoneyStack items are removed from your inventory</li>
+                                    <li>4. Your wallet is credited within 5 minutes</li>
+                                </ol>
+                                <div className="flex gap-3 pt-1">
+                                    <Badge variant="outline" className="text-xs">
+                                        <Coins className="mr-1 size-3 text-amber-500" />
+                                        Money = 1 coin
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs">
+                                        <Coins className="mr-1 size-3 text-amber-500" />
+                                        MoneyStack = 10 coins
+                                    </Badge>
+                                </div>
+                            </div>
+
+                            {/* Action area */}
+                            <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-4">
+                                {!isAuthenticated ? (
+                                    <>
+                                        <p className="text-muted-foreground text-center text-sm">
+                                            Log in to deposit money
+                                        </p>
+                                        <Button size="sm" onClick={() => router.visit('/login')}>
+                                            Log In
+                                        </Button>
+                                    </>
+                                ) : !hasPzAccount ? (
+                                    <p className="text-muted-foreground text-center text-sm">
+                                        Link your PZ account first via the whitelist to use deposits
+                                    </p>
+                                ) : pendingDeposit ? (
+                                    <>
+                                        <Loader2 className="size-6 animate-spin text-amber-500" />
+                                        <p className="text-sm font-medium">Deposit in progress...</p>
+                                        <p className="text-muted-foreground text-center text-xs">
+                                            Stay online in-game. Your money will be collected shortly.
+                                        </p>
+                                    </>
+                                ) : (
+                                    <Button onClick={handleDeposit} disabled={depositLoading}>
+                                        {depositLoading ? (
+                                            <Loader2 className="mr-1.5 size-4 animate-spin" />
+                                        ) : (
+                                            <ArrowDownToLine className="mr-1.5 size-4" />
+                                        )}
+                                        Deposit Money
+                                    </Button>
+                                )}
+
+                                {/* Last result */}
+                                {lastDepositResult && !pendingDeposit && (
+                                    <div className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs ${
+                                        lastDepositResult.status === 'success'
+                                            ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300'
+                                            : 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
+                                    }`}>
+                                        {lastDepositResult.status === 'success' ? (
+                                            <CheckCircle className="size-3.5" />
+                                        ) : (
+                                            <XCircle className="size-3.5" />
+                                        )}
+                                        <span>
+                                            {lastDepositResult.status === 'success'
+                                                ? `Deposited ${lastDepositResult.total_coins} coins (${lastDepositResult.money_count} Money + ${lastDepositResult.stack_count} MoneyStack)`
+                                                : lastDepositResult.message || 'Deposit failed'}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Featured section */}
                 {(featuredItems.length > 0 || featuredBundles.length > 0) && (

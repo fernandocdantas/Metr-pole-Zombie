@@ -13,6 +13,7 @@ require("ZM_PlayerStats")
 require("ZM_RespawnDelay")
 require("ZM_SafeZone")
 require("ZM_PvpTracker")
+require("ZM_MoneyDeposit")
 
 print("[ZomboidManager] Initializing server-side bridge mod...")
 
@@ -30,6 +31,9 @@ local GAME_STATE_EXPORT_INTERVAL = 24 -- ~1 real minute
 
 local deliveryTickCounter = 0
 local DELIVERY_PROCESS_INTERVAL = 6 -- ~15 real seconds
+
+local depositTickCounter = 0
+local DEPOSIT_PROCESS_INTERVAL = 6 -- ~15 real seconds
 
 --- OnCreatePlayer — triggered when a player connects/spawns
 --- NOTE: On PZ dedicated servers, this event may not fire reliably.
@@ -79,6 +83,16 @@ local function onEveryOneMinute()
         end
     end
 
+    -- Process money deposit requests
+    depositTickCounter = depositTickCounter + 1
+    if depositTickCounter >= DEPOSIT_PROCESS_INTERVAL then
+        depositTickCounter = 0
+        local deposited = ZM_MoneyDeposit.process()
+        if deposited > 0 then
+            print("[ZomboidManager] Processed " .. deposited .. " money deposit(s)")
+        end
+    end
+
     -- Export player positions for map updates
     positionTickCounter = positionTickCounter + 1
     if positionTickCounter >= POSITION_EXPORT_INTERVAL then
@@ -114,6 +128,9 @@ local function onServerStarted()
     -- Initialize PvP tracker
     ZM_PvpTracker.init()
 
+    -- Initialize money deposit system
+    ZM_MoneyDeposit.init()
+
     -- Export game state immediately so it's available even when server is paused
     if ZM_GameState.export() then
         print("[ZomboidManager] Exported initial game state")
@@ -135,4 +152,4 @@ Events.EveryTenMinutes.Add(onEveryTenMinutes)
 Events.EveryOneMinute.Add(onEveryOneMinute)
 Events.OnServerStarted.Add(onServerStarted)
 
-print("[ZomboidManager] Event hooks registered: OnCreatePlayer, OnWeaponHitCharacter(2), EveryTenMinutes, EveryOneMinute, OnServerStarted")
+print("[ZomboidManager] Event hooks registered: OnCreatePlayer, OnWeaponHitCharacter(2), EveryTenMinutes, EveryOneMinute, OnServerStarted, MoneyDeposit")

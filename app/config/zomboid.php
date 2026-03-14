@@ -113,6 +113,18 @@ return [
         'safezone_config' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/safezone_config.json',
         'safezone_violations' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/safezone_violations.json',
         'pvp_kills' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/pvp_kills.json',
+        'deposit_requests' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/deposit_requests.json',
+        'deposit_results' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/deposit_results.json',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Money Deposit — In-game money to wallet conversion
+    |--------------------------------------------------------------------------
+    */
+    'money_deposit' => [
+        'money_value' => (int) env('PZ_MONEY_VALUE', 1),
+        'stack_value' => (int) env('PZ_MONEY_STACK_VALUE', 10),
     ],
 
     /*
