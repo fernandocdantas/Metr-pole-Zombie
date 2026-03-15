@@ -188,7 +188,7 @@ export default function ShopPurchases({ purchases, stats, filters }: Props) {
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="overflow-x-auto">
                         {purchases.data.length > 0 ? (
                             <Table>
                                 <TableHeader>

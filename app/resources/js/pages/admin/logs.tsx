@@ -63,7 +63,7 @@ export default function Logs({ lines: initialLines }: { lines: string[] }) {
                             Live game server container output
                         </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <Select value={tail} onValueChange={(v) => { setTail(v); }}>
                             <SelectTrigger className="w-[120px]">
                                 <SelectValue />

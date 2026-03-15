@@ -168,7 +168,7 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
                         <CardTitle>All Bundles</CardTitle>
                         <CardDescription>{bundles.length} bundles</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="overflow-x-auto">
                         {bundles.length > 0 ? (
                             <Table>
                                 <TableHeader>

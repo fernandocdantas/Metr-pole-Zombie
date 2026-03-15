@@ -27,7 +27,7 @@ Zomboid Manager wraps a Dockerized Project Zomboid dedicated server with a Larav
 - **Docker Engine API** — Container lifecycle control (start, stop, restart, update) via the Docker socket
 - **File I/O** — Direct read/write access to PZ config files (`server.ini`, sandbox Lua) mounted from the game server volume
 
-13 admin pages, a public status page, 30+ API endpoints, Discord notifications, an interactive player map, inventory management, safe zones, and more — all from a browser.
+20+ admin pages, a public status page, player portal, item shop, 30+ API endpoints, Discord notifications, an interactive player map, inventory management, safe zones, and more — all from a browser.
 
 ## Feature Status
 
@@ -54,11 +54,27 @@ Zomboid Manager wraps a Dockerized Project Zomboid dedicated server with a Larav
 | Authentication | Done | Fortify sessions, Sanctum tokens, API keys, 2FA |
 | User Settings | Done | Profile, password, appearance, two-factor setup |
 | Public Status Page | Done | Live server status, player count, uptime |
+| Welcome Page | Done | Public landing with stats, podium, feature overview |
+| Rankings | Done | Public leaderboard with 6 stat categories |
+| Player Portal | Done | Player dashboard with account info and map position |
+| Auto Restart | Done | Scheduled daily restarts with countdown warnings |
 | Item Shop & Wallet | Done | Browse, purchase items/bundles, promo codes, wallet |
-| In-Game Money Deposit | Done | Convert Base.Money/MoneyStack to wallet coins via Lua bridge |
+| Shop Admin (Items, Bundles, Promotions) | Done | Full CRUD for items, categories, bundles, promos |
+| Purchase History & Wallets | Done | Admin views for purchases, delivery tracking, wallet management |
+| In-Game Money Deposit | Done | Convert Base.Money/MoneyBundle to wallet coins via Lua bridge |
 | Lua Bridge Mod | Done | Server-side enforcement for safe zones + respawn |
 
 ## Features
+
+### Welcome Page
+
+Public landing page with live server status, community stats (total players, zombie kills, hours survived, deaths), a top survivors podium, and a feature overview. No login required.
+
+<details>
+<summary>Screenshot</summary>
+
+![Welcome](docs/screenshots/welcome.png)
+</details>
 
 ### Server Control
 
@@ -214,6 +230,56 @@ Browse and purchase in-game items and bundles with a virtual wallet. Categories,
 ![Shop](docs/screenshots/shop.png)
 </details>
 
+### Shop Admin — Items & Categories
+
+Admin interface for managing shop items and categories. Set prices, quantities, stock limits, featured status, and assign categories. Full CRUD with inline editing.
+
+<details>
+<summary>Screenshot</summary>
+
+![Shop Admin](docs/screenshots/shop-admin.png)
+</details>
+
+### Shop Bundles
+
+Create and manage item bundles with percentage discounts. Each bundle contains multiple shop items with automatic price calculation showing savings.
+
+<details>
+<summary>Screenshot</summary>
+
+![Bundles](docs/screenshots/bundles.png)
+</details>
+
+### Shop Promotions
+
+Create discount codes and automatic promotions with percentage or fixed-amount discounts, usage limits, and expiration dates.
+
+<details>
+<summary>Screenshot</summary>
+
+![Promotions](docs/screenshots/promotions.png)
+</details>
+
+### Shop Purchases
+
+Admin view of all player purchases with delivery status tracking, revenue stats, and filtering. Shows item delivery details including partial deliveries and failures.
+
+<details>
+<summary>Screenshot</summary>
+
+![Shop Purchases](docs/screenshots/shop-purchases.png)
+</details>
+
+### Wallet Management
+
+Admin panel for managing player currency balances. View total circulation, per-player balances, earnings, and spending. Adjust balances manually when needed.
+
+<details>
+<summary>Screenshot</summary>
+
+![Wallets](docs/screenshots/wallets.png)
+</details>
+
 ### In-Game Money Deposit
 
 Players deposit `Base.Money` (1 coin) and `Base.MoneyStack` (10 coins) looted from zombies into their web wallet. Click "Deposit" on the shop page, the Lua bridge removes money items from inventory within ~15 seconds, and the wallet is credited within 5 minutes.
@@ -244,6 +310,36 @@ Unauthenticated server status page showing: online/offline state, current player
 <summary>Screenshot</summary>
 
 ![Status Page](docs/screenshots/status.png)
+</details>
+
+### Rankings
+
+Public leaderboard with six tabs: zombie kills, hours survived, deaths, kills/death ratio, hours/death ratio, and PvP kills/death. Community stats summary at the top. No login required.
+
+<details>
+<summary>Screenshot</summary>
+
+![Rankings](docs/screenshots/rankings.png)
+</details>
+
+### Player Portal
+
+Authenticated player dashboard showing game account details (username, whitelist status, server status), profile settings links, and an interactive map with the player's last known position.
+
+<details>
+<summary>Screenshot</summary>
+
+![Player Portal](docs/screenshots/portal.png)
+</details>
+
+### Auto Restart
+
+Schedule daily restart times with timezone support, configurable in-game countdown warnings, Discord reminder notifications, and custom warning messages. Up to 5 daily restart slots.
+
+<details>
+<summary>Screenshot</summary>
+
+![Auto Restart](docs/screenshots/auto-restart.png)
 </details>
 
 ## Architecture
@@ -369,6 +465,12 @@ make down && make up
 ## Screenshots
 
 <details open>
+<summary>Welcome Page</summary>
+
+![Welcome](docs/screenshots/welcome.png)
+</details>
+
+<details open>
 <summary>Dashboard</summary>
 
 ![Dashboard](docs/screenshots/dashboard.png)
@@ -408,6 +510,12 @@ make down && make up
 <summary>Backups</summary>
 
 ![Backups](docs/screenshots/backups.png)
+</details>
+
+<details open>
+<summary>Auto Restart</summary>
+
+![Auto Restart](docs/screenshots/auto-restart.png)
 </details>
 
 <details open>
@@ -459,6 +567,36 @@ make down && make up
 </details>
 
 <details open>
+<summary>Shop Admin</summary>
+
+![Shop Admin](docs/screenshots/shop-admin.png)
+</details>
+
+<details open>
+<summary>Shop Bundles</summary>
+
+![Bundles](docs/screenshots/bundles.png)
+</details>
+
+<details open>
+<summary>Shop Promotions</summary>
+
+![Promotions](docs/screenshots/promotions.png)
+</details>
+
+<details open>
+<summary>Shop Purchases</summary>
+
+![Shop Purchases](docs/screenshots/shop-purchases.png)
+</details>
+
+<details open>
+<summary>Wallet Management</summary>
+
+![Wallets](docs/screenshots/wallets.png)
+</details>
+
+<details open>
 <summary>In-Game Money Deposit</summary>
 
 ![Money Deposit](docs/screenshots/shop-deposit-auth.png)
@@ -468,6 +606,18 @@ make down && make up
 <summary>Public Status Page</summary>
 
 ![Status Page](docs/screenshots/status.png)
+</details>
+
+<details open>
+<summary>Rankings</summary>
+
+![Rankings](docs/screenshots/rankings.png)
+</details>
+
+<details open>
+<summary>Player Portal</summary>
+
+![Player Portal](docs/screenshots/portal.png)
 </details>
 
 ## REST API Reference

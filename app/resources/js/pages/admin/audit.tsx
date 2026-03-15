@@ -145,7 +145,7 @@ export default function Audit({
                         </CardTitle>
                         <CardDescription>All admin actions logged with details</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="overflow-x-auto">
                         <Deferred data="logs" fallback={
                             <Table>
                                 <TableHeader>

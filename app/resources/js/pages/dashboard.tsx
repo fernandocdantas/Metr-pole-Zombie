@@ -108,8 +108,8 @@ export default function Dashboard({
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 lg:p-6">
                 {/* Server Status Banner */}
-                <div className={`flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between ${statusBgClass}`}>
-                    <div className="flex flex-wrap items-center gap-3">
+                <div className={`flex flex-col gap-3 overflow-hidden rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between ${statusBgClass}`}>
+                    <div className="flex min-w-0 flex-wrap items-center gap-3">
                         <Circle
                             className={`size-4 fill-current ${
                                 server.status === 'online'
@@ -147,7 +147,7 @@ export default function Dashboard({
                             </Badge>
                         )}
                         {auto_restart?.enabled && auto_restart.schedule?.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-1">
+                            <div className="flex min-w-0 flex-wrap items-center gap-1">
                                 {auto_restart.schedule.map((time) => {
                                     const isNext = auto_restart.next_restart_at &&
                                         new Date(auto_restart.next_restart_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) === time;

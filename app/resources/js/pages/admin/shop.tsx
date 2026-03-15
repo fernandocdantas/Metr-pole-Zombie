@@ -243,7 +243,7 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
                             Manage shop items and categories
                         </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         <Button variant="outline" onClick={openCreateCategory}>
                             <Tag className="mr-1.5 size-4" />
                             Add Category
@@ -292,7 +292,7 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="overflow-x-auto">
                             {filteredItems.length > 0 ? (
                                 <Table>
                                     <TableHeader>
@@ -392,7 +392,7 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
                             <CardTitle>Categories</CardTitle>
                             <CardDescription>Organize shop items into categories</CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="overflow-x-auto">
                             {categories.length > 0 ? (
                                 <Table>
                                     <TableHeader>

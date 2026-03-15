@@ -240,7 +240,7 @@ export default function Moderation({ mapConfig, hasTiles, filters, events }: Pro
                             {events ? `${events.total} event${events.total !== 1 ? 's' : ''} found` : 'Loading...'}
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="overflow-x-auto">
                         <Deferred data="events" fallback={
                             <Table>
                                 <TableHeader>

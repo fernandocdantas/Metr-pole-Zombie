@@ -308,9 +308,9 @@ export default function Welcome({
                     <section className="py-16">
                         <div className="mx-auto max-w-5xl px-4 text-center">
                             <Skeleton className="mx-auto mb-8 h-8 w-48" />
-                            <div className="flex items-end justify-center gap-4">
+                            <div className="flex items-end justify-center gap-2 sm:gap-4">
                                 {Array.from({ length: 3 }).map((_, i) => (
-                                    <Skeleton key={i} className={`w-40 rounded-lg ${i === 1 ? 'h-52' : 'h-40'}`} />
+                                    <Skeleton key={i} className={`w-28 rounded-lg sm:w-40 ${i === 1 ? 'h-52' : 'h-40'}`} />
                                 ))}
                             </div>
                         </div>
@@ -325,7 +325,7 @@ export default function Welcome({
                                     </h2>
                                     <p className="text-muted-foreground">Leading zombie slayers on the server</p>
                                 </div>
-                                <div className="flex items-end justify-center gap-4">
+                                <div className="flex items-end justify-center gap-2 sm:gap-4">
                                     {/* 2nd place */}
                                     {top_players.length > 1 && (
                                         <motion.div
@@ -334,7 +334,7 @@ export default function Welcome({
                                             viewport={{ once: true }}
                                             transition={{ duration: 0.5, delay: 0.1 }}
                                         >
-                                            <Card className="w-36 border-zinc-400/30 sm:w-44">
+                                            <Card className="w-28 border-zinc-400/30 sm:w-44">
                                                 <CardContent className="pt-4 text-center">
                                                     <div className="mx-auto mb-2 flex size-8 items-center justify-center rounded-full bg-zinc-200 text-sm font-bold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300">
                                                         2
@@ -363,7 +363,7 @@ export default function Welcome({
                                         viewport={{ once: true }}
                                         transition={{ duration: 0.5 }}
                                     >
-                                        <Card className="w-40 border-yellow-500/30 sm:w-52">
+                                        <Card className="w-32 border-yellow-500/30 sm:w-52">
                                             <CardContent className="pt-4 text-center">
                                                 <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-full bg-yellow-500/20 text-base font-bold text-yellow-600 dark:text-yellow-400">
                                                     1
@@ -392,7 +392,7 @@ export default function Welcome({
                                             viewport={{ once: true }}
                                             transition={{ duration: 0.5, delay: 0.2 }}
                                         >
-                                            <Card className="w-36 border-amber-700/30 sm:w-44">
+                                            <Card className="w-28 border-amber-700/30 sm:w-44">
                                                 <CardContent className="pt-4 text-center">
                                                     <div className="mx-auto mb-2 flex size-8 items-center justify-center rounded-full bg-amber-800/20 text-sm font-bold text-amber-700 dark:text-amber-500">
                                                         3

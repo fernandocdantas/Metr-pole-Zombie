@@ -302,7 +302,7 @@ export default function SafeZones({ config, violations, mapConfig, hasTiles }: P
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="overflow-x-auto">
                         <div className="mb-4">
                             <span className="text-sm text-muted-foreground">
                                 {config.zones.length} zone(s) defined
@@ -383,7 +383,7 @@ export default function SafeZones({ config, violations, mapConfig, hasTiles }: P
                                     Players who attacked others in safe zones (2+ strikes)
                                 </CardDescription>
                             </div>
-                            <div className="flex gap-1">
+                            <div className="flex flex-wrap gap-1">
                                 {['pending', 'actioned', 'dismissed', 'all'].map((s) => (
                                     <Button
                                         key={s}
@@ -397,7 +397,7 @@ export default function SafeZones({ config, violations, mapConfig, hasTiles }: P
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="overflow-x-auto">
                         {filteredViolations.length > 0 ? (
                             <Table>
                                 <TableHeader>

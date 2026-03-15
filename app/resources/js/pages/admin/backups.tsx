@@ -242,7 +242,7 @@ export default function Backups({ backups, current_version, current_branch }: Ba
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="overflow-x-auto">
                         <Deferred data="backups" fallback={
                             <Table>
                                 <TableHeader>
