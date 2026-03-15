@@ -6,15 +6,8 @@ local JSON = require("ZM_JSON")
 
 ZM_Utils = {}
 
---- Get ISO 8601 timestamp using PZ's calendar
+--- Get ISO 8601 timestamp using real wall-clock time (not PZ's in-game calendar)
 function ZM_Utils.getTimestamp()
-    if getGameTime then
-        local gt = getGameTime()
-        return string.format("%04d-%02d-%02dT%02d:%02d:%02d",
-            gt:getYear(), gt:getMonth() + 1, gt:getDay(),
-            gt:getHour(), gt:getMinutes(), 0)
-    end
-    -- Fallback if getGameTime not available
     local cal = Calendar.getInstance()
     return string.format("%04d-%02d-%02dT%02d:%02d:%02d",
         cal:get(Calendar.YEAR), cal:get(Calendar.MONTH) + 1, cal:get(Calendar.DAY_OF_MONTH),

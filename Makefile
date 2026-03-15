@@ -7,7 +7,7 @@ endif
 
 COMPOSE := docker compose -f docker-compose.yml -f $(ARCH_FILE)
 
-.PHONY: up down build restart logs ps stop pull migrate test exec arch init setup db-check db-init db-reset db-backup db-restore nuke
+.PHONY: up down build restart logs ps stop pull migrate test exec arch init setup db-check db-init db-reset db-backup db-restore nuke workshop-package
 
 # ── First-run setup ──────────────────────────────────────────────────
 # Interactive wizard: configures env, creates DB volume, starts services,
@@ -109,3 +109,7 @@ db-restore:
 		docker exec -i pz-db psql -U zomboid -d zomboid < "$$LATEST"; \
 		echo "Restored."; \
 	fi
+
+# ── Workshop ────────────────────────────────────────────────────────
+workshop-package:
+	bash scripts/workshop-package.sh

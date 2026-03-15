@@ -10,15 +10,17 @@
 
 CONFIGURE_SCRIPT="/home/steam/configure-server.sh"
 
-# Clean up previously injected ZM files from base game directory.
-# ZomboidManager is now loaded as a proper PZ mod, so these copies would
-# cause double-loading if left in place.
+# Clean up previously injected ZM files and empty mod directory from base game.
+# ZomboidManager is loaded from Zomboid/mods/, not the base game directory.
+# An empty ZomboidManager dir in the base game mods shadows the real mod.
 for dir in /home/steam/ZomboidDedicatedServer/media/lua/server /home/steam/ZomboidDedicatedServer/media/lua/client; do
     if ls "$dir"/ZM_*.lua 1>/dev/null 2>&1; then
         rm -f "$dir"/ZM_*.lua
         echo "[entrypoint] Cleaned up old injected ZM files from $dir"
     fi
 done
+# Note: ZomboidManager Workshop cache at steamapps/workshop/content/108600/3685323705
+# is populated by configure-server.sh — do NOT delete it here.
 
 if [ -f "$CONFIGURE_SCRIPT" ]; then
     sed -i '/^start_server$/i bash '"$CONFIGURE_SCRIPT" /home/steam/run_server.sh

@@ -39,6 +39,9 @@ backups/*.tar.gz
 # Node (frontend - future)
 node_modules/
 
+# Workshop build artifacts
+workshop/ZomboidManager/Contents/mods/ZomboidManager/42/media/
+
 # Test / Coverage
 /app/.phpunit.result.cache
 /app/coverage/

@@ -50,8 +50,12 @@ apply_setting() {
         return
     fi
 
+    # Escape backslashes for sed replacement (B42 uses \ in mod IDs)
+    local escaped_value
+    escaped_value=$(printf '%s' "$value" | sed 's/\\/\\\\/g')
+
     if grep -q "^${key}=" "$file" 2>/dev/null; then
-        sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+        sed -i "s|^${key}=.*|${key}=${escaped_value}|" "$file"
     else
         echo "${key}=${value}" >> "$file"
     fi
@@ -92,8 +96,34 @@ fi
 apply_setting "DoLuaChecksum" "false" "$INI_FILE"
 echo "[configure-server] Set DoLuaChecksum=false (required for ZomboidManager mod)"
 
+# ZomboidManager Workshop integration.
+# PZ B42 dedicated servers only load mods registered via Workshop (WorkshopItems= line).
+# Local mods in Zomboid/mods/ or ZomboidDedicatedServer/mods/ are NOT scanned.
+# We create a fake Workshop cache entry so PZ discovers our mod through its Workshop scanner.
+ZM_WORKSHOP_ID="3685323705"
+ZM_SOURCE="/home/steam/Zomboid/mods/ZomboidManager"
+WORKSHOP_MOD_DIR="/home/steam/ZomboidDedicatedServer/steamapps/workshop/content/108600/${ZM_WORKSHOP_ID}/mods/ZomboidManager"
+
+if [ -f "$ZM_SOURCE/42/mod.info" ]; then
+    # Create Workshop cache with both root-level and 42/ mod.info.
+    # PZ B42 dedicated server discovers mods by scanning for mod.info at the
+    # root of the mod directory, but loads Lua from the 42/ subdirectory.
+    mkdir -p "$WORKSHOP_MOD_DIR/42/media"
+    mkdir -p "$WORKSHOP_MOD_DIR/common"
+    # Root-level mod.info + poster (required for PZ mod discovery)
+    cp "$ZM_SOURCE"/42/mod.info "$WORKSHOP_MOD_DIR/mod.info"
+    cp "$ZM_SOURCE"/42/poster.png "$WORKSHOP_MOD_DIR/poster.png" 2>/dev/null
+    # B42 subdir with all mod files (required for Lua loading)
+    cp -r "$ZM_SOURCE"/42/* "$WORKSHOP_MOD_DIR/42/"
+    echo "[configure-server] Installed ZomboidManager into Workshop cache (ID: $ZM_WORKSHOP_ID)"
+else
+    echo "[configure-server] WARNING: ZomboidManager source not found at $ZM_SOURCE/42/mod.info"
+fi
+
+# Remove any stale ZomboidManager from install dir (shadows Workshop version)
+rm -rf /home/steam/ZomboidDedicatedServer/mods/ZomboidManager
+
 # Ensure ZomboidManager is in the Mods= list.
-# Loaded as a proper PZ mod so both server and client Lua files are distributed.
 CURRENT_MODS=$(grep "^Mods=" "$INI_FILE" | sed 's/^Mods=//')
 if ! echo "$CURRENT_MODS" | grep -q "ZomboidManager"; then
     if [ -n "$CURRENT_MODS" ]; then
@@ -104,26 +134,15 @@ if ! echo "$CURRENT_MODS" | grep -q "ZomboidManager"; then
     echo "[configure-server] Added ZomboidManager to Mods list"
 fi
 
-# Auto-register Log Extender mod (Workshop #1844524972) if not already present
-CURRENT_MODS=$(grep "^Mods=" "$INI_FILE" | sed 's/^Mods=//')
+# Ensure ZomboidManager workshop ID is in WorkshopItems= list.
 CURRENT_WORKSHOP=$(grep "^WorkshopItems=" "$INI_FILE" | sed 's/^WorkshopItems=//')
-if [ -n "$CURRENT_MODS" ]; then
-    if ! echo "$CURRENT_MODS" | grep -q "LogExtender"; then
-        apply_setting "Mods" "${CURRENT_MODS};LogExtender" "$INI_FILE"
-        echo "[configure-server] Added LogExtender to Mods list"
+if ! echo "$CURRENT_WORKSHOP" | grep -q "$ZM_WORKSHOP_ID"; then
+    if [ -n "$CURRENT_WORKSHOP" ]; then
+        apply_setting "WorkshopItems" "${CURRENT_WORKSHOP};${ZM_WORKSHOP_ID}" "$INI_FILE"
+    else
+        apply_setting "WorkshopItems" "${ZM_WORKSHOP_ID}" "$INI_FILE"
     fi
-else
-    apply_setting "Mods" "LogExtender" "$INI_FILE"
-    echo "[configure-server] Set Mods=LogExtender"
-fi
-if [ -n "$CURRENT_WORKSHOP" ]; then
-    if ! echo "$CURRENT_WORKSHOP" | grep -q "1844524972"; then
-        apply_setting "WorkshopItems" "${CURRENT_WORKSHOP};1844524972" "$INI_FILE"
-        echo "[configure-server] Added Log Extender workshop ID"
-    fi
-else
-    apply_setting "WorkshopItems" "1844524972" "$INI_FILE"
-    echo "[configure-server] Set WorkshopItems=1844524972"
+    echo "[configure-server] Added ZomboidManager workshop ID $ZM_WORKSHOP_ID"
 fi
 
 # Pre-create Lua bridge directories for inventory exports
