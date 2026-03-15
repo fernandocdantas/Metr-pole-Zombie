@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Dialog,
@@ -55,6 +56,7 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
     const [discountPercent, setDiscountPercent] = useState('10');
     const [maxPerPlayer, setMaxPerPlayer] = useState('');
     const [bundleItems, setBundleItems] = useState<BundleItemEntry[]>([]);
+    const [featured, setFeatured] = useState(false);
 
     const itemsTotal = useMemo(() => {
         return bundleItems.reduce((sum, entry) => {
@@ -75,6 +77,7 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
         setDiscountPercent('10');
         setMaxPerPlayer('');
         setBundleItems([{ shop_item_id: '', quantity: 1 }]);
+        setFeatured(false);
         setDialogOpen(true);
     }
 
@@ -90,6 +93,7 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
                 quantity: i.pivot.quantity,
             })),
         );
+        setFeatured(bundle.is_featured);
         setDialogOpen(true);
     }
 
@@ -115,6 +119,7 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
             discount_percent: parseFloat(discountPercent) || 0,
             max_per_player: maxPerPlayer ? parseInt(maxPerPlayer) : null,
             items: bundleItems.filter((i) => i.shop_item_id),
+            is_featured: featured,
         };
 
         if (editBundle) {
@@ -190,6 +195,9 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
                                                 <TableCell>
                                                     <div>
                                                         <span className="font-medium">{bundle.name}</span>
+                                                        {bundle.is_featured && (
+                                                            <Badge className="ml-2 bg-amber-500 text-xs">Featured</Badge>
+                                                        )}
                                                         {bundle.description && (
                                                             <p className="text-muted-foreground max-w-[250px] truncate text-xs">
                                                                 {bundle.description}
@@ -359,6 +367,14 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
                                     </Button>
                                 </div>
                             ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Checkbox
+                                id="bundle-featured"
+                                checked={featured}
+                                onCheckedChange={(checked) => setFeatured(checked === true)}
+                            />
+                            <Label htmlFor="bundle-featured">Featured bundle</Label>
                         </div>
                     </div>
                     <DialogFooter>

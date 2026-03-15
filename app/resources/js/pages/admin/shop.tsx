@@ -3,6 +3,7 @@ import { Package, Plus, Search, Tag, ToggleLeft, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Dialog,
@@ -78,6 +79,7 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
     const [itemMaxPerPlayer, setItemMaxPerPlayer] = useState('');
     const [itemStock, setItemStock] = useState('');
     const [itemSearch, setItemSearch] = useState('');
+    const [itemFeatured, setItemFeatured] = useState(false);
 
     // Category form state
     const [catName, setCatName] = useState('');
@@ -116,6 +118,7 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
         setItemMaxPerPlayer('');
         setItemStock('');
         setItemSearch('');
+        setItemFeatured(false);
         setItemDialogOpen(true);
     }
 
@@ -131,6 +134,7 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
         setItemMaxPerPlayer(item.max_per_player?.toString() || '');
         setItemStock(item.stock?.toString() || '');
         setItemSearch('');
+        setItemFeatured(item.is_featured);
         setItemDialogOpen(true);
     }
 
@@ -164,6 +168,7 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
             category_id: itemCategoryId || null,
             max_per_player: itemMaxPerPlayer ? parseInt(itemMaxPerPlayer) : null,
             stock: itemStock ? parseInt(itemStock) : null,
+            is_featured: itemFeatured,
         };
 
         if (editItem) {
@@ -464,14 +469,14 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
 
             {/* Create/Edit Item Dialog */}
             <Dialog open={itemDialogOpen} onOpenChange={setItemDialogOpen}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
                         <DialogTitle>{editItem ? 'Edit Item' : 'Create Item'}</DialogTitle>
                         <DialogDescription>
                             {editItem ? 'Update shop item details.' : 'Add a new item to the shop.'}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-1">
+                    <div className="space-y-3">
                         <div className="space-y-2">
                             <Label>Name</Label>
                             <Input value={itemName} onChange={(e) => setItemName(e.target.value)} />
@@ -547,22 +552,22 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
                                 />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label>Category</Label>
-                            <Select value={itemCategoryId} onValueChange={setItemCategoryId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="No category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {categories.filter((c) => c.is_active).map((cat) => (
-                                        <SelectItem key={cat.id} value={cat.id}>
-                                            {cat.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="space-y-2">
+                                <Label>Category</Label>
+                                <Select value={itemCategoryId} onValueChange={setItemCategoryId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="None" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {categories.filter((c) => c.is_active).map((cat) => (
+                                            <SelectItem key={cat.id} value={cat.id}>
+                                                {cat.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             <div className="space-y-2">
                                 <Label>Max Per Player</Label>
                                 <Input
@@ -583,6 +588,14 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
                                     onChange={(e) => setItemStock(e.target.value)}
                                 />
                             </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Checkbox
+                                id="item-featured"
+                                checked={itemFeatured}
+                                onCheckedChange={(checked) => setItemFeatured(checked === true)}
+                            />
+                            <Label htmlFor="item-featured">Featured item</Label>
                         </div>
                     </div>
                     <DialogFooter>
