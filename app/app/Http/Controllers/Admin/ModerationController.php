@@ -20,11 +20,24 @@ class ModerationController extends Controller
     {
         $mapConfig = $this->mapConfigBuilder->build();
 
+        $sort = $request->validated('sort', 'created_at');
+        $direction = $request->validated('direction', 'desc');
+
+        if (! in_array($sort, ['created_at', 'event_type', 'player'], true)) {
+            $sort = 'created_at';
+        }
+
+        if (! in_array($direction, ['asc', 'desc'], true)) {
+            $direction = 'desc';
+        }
+
         $filters = [
             'event_types' => $request->validated('event_types', 'pvp_hit,death'),
             'player' => $request->validated('player'),
             'from' => $request->validated('from'),
             'to' => $request->validated('to'),
+            'sort' => $sort,
+            'direction' => $direction,
         ];
 
         return Inertia::render('admin/moderation', [
@@ -60,7 +73,7 @@ class ModerationController extends Controller
                     $query->where('created_at', '<=', $filters['to'].' 23:59:59');
                 }
 
-                $paginated = $query->orderByDesc('created_at')->paginate(25);
+                $paginated = $query->orderBy($filters['sort'], $filters['direction'])->paginate(25);
 
                 return GameEventResource::collection($paginated);
             }),

@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { MoreHorizontal, Pencil, Plus, Power, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { SortableHeader } from '@/components/sortable-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +29,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useTableSort } from '@/hooks/use-table-sort';
 import AppLayout from '@/layouts/app-layout';
 import { fetchAction } from '@/lib/fetch-action';
 import type { BreadcrumbItem } from '@/types';
@@ -43,7 +45,10 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Promotions', href: '/admin/shop/promotions' },
 ];
 
-function getPromotionStatus(promo: ShopPromotion): { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } {
+type StatusLabel = 'Active' | 'Scheduled' | 'Inactive' | 'Expired';
+const statusOrder: Record<StatusLabel, number> = { Active: 0, Scheduled: 1, Inactive: 2, Expired: 3 };
+
+function getPromotionStatus(promo: ShopPromotion): { label: StatusLabel; variant: 'default' | 'secondary' | 'destructive' | 'outline' } {
     if (!promo.is_active) return { label: 'Inactive', variant: 'destructive' };
     const now = new Date();
     if (new Date(promo.starts_at) > now) return { label: 'Scheduled', variant: 'outline' };
@@ -59,10 +64,13 @@ function formatShortDate(dateStr: string): string {
     });
 }
 
+type SortKey = 'name' | 'type' | 'value' | 'usage_count' | 'starts_at' | 'status';
+
 export default function ShopPromotions({ promotions }: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editPromo, setEditPromo] = useState<ShopPromotion | null>(null);
     const [loading, setLoading] = useState(false);
+    const { sortKey, sortDir, toggleSort } = useTableSort<SortKey>('name', 'asc');
 
     const [name, setName] = useState('');
     const [code, setCode] = useState('');
@@ -75,6 +83,30 @@ export default function ShopPromotions({ promotions }: Props) {
     const [perUserLimit, setPerUserLimit] = useState('');
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
+
+    const sortedPromotions = useMemo(() => {
+        const sorted = [...promotions];
+        sorted.sort((a, b) => {
+            let cmp = 0;
+            if (sortKey === 'name') {
+                cmp = a.name.localeCompare(b.name);
+            } else if (sortKey === 'type') {
+                cmp = a.type.localeCompare(b.type);
+            } else if (sortKey === 'value') {
+                cmp = parseFloat(a.value) - parseFloat(b.value);
+            } else if (sortKey === 'usage_count') {
+                cmp = a.usage_count - b.usage_count;
+            } else if (sortKey === 'starts_at') {
+                cmp = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+            } else if (sortKey === 'status') {
+                const aLabel = getPromotionStatus(a).label;
+                const bLabel = getPromotionStatus(b).label;
+                cmp = (statusOrder[aLabel] ?? 99) - (statusOrder[bLabel] ?? 99);
+            }
+            return sortDir === 'desc' ? -cmp : cmp;
+        });
+        return sorted;
+    }, [promotions, sortKey, sortDir]);
 
     function openCreate() {
         setEditPromo(null);
@@ -179,25 +211,37 @@ export default function ShopPromotions({ promotions }: Props) {
                         <CardDescription>{promotions.length} promotions</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {promotions.length > 0 ? (
+                        {sortedPromotions.length > 0 ? (
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Name</TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="name" label="Name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
                                         <TableHead>Code</TableHead>
-                                        <TableHead>Type</TableHead>
-                                        <TableHead>Value</TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="type" label="Type" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="value" label="Value" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
                                         <TableHead>Applies To</TableHead>
-                                        <TableHead>Usage</TableHead>
-                                        <TableHead>Date Range</TableHead>
-                                        <TableHead>Status</TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="usage_count" label="Usage" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="starts_at" label="Date Range" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="status" label="Status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
                                         <TableHead className="w-[50px]">
                                             <span className="sr-only">Actions</span>
                                         </TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {promotions.map((promo) => {
+                                    {sortedPromotions.map((promo) => {
                                         const status = getPromotionStatus(promo);
                                         return (
                                             <TableRow key={promo.id}>

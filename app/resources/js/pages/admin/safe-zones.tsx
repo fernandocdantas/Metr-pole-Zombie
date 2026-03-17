@@ -10,8 +10,10 @@ import {
     Trash2,
     X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import PzMap from '@/components/pz-map';
+import { SortableHeader } from '@/components/sortable-header';
+import { useTableSort } from '@/hooks/use-table-sort';
 import type { DrawnZone, ZoneOverlay } from '@/components/pz-map';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -85,8 +87,11 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Safe Zones', href: '/admin/safe-zones' },
 ];
 
+type ViolationSortKey = 'attacker' | 'strike_number' | 'occurred_at' | 'status';
+
 export default function SafeZones({ config, violations, mapConfig, hasTiles }: Props) {
     const [showAddDialog, setShowAddDialog] = useState(false);
+    const { sortKey: vSortKey, sortDir: vSortDir, toggleSort: toggleVSort } = useTableSort<ViolationSortKey>('occurred_at', 'desc');
     const [showDeleteDialog, setShowDeleteDialog] = useState<Zone | null>(null);
     const [showResolveDialog, setShowResolveDialog] = useState<Violation | null>(null);
     const [resolveAction, setResolveAction] = useState<'dismissed' | 'actioned'>('dismissed');
@@ -200,9 +205,21 @@ export default function SafeZones({ config, violations, mapConfig, hasTiles }: P
         router.reload({ only: ['violations'] });
     }
 
-    const filteredViolations = violations.filter(
-        (v) => statusFilter === 'all' || v.status === statusFilter,
-    );
+    const filteredViolations = useMemo(() => {
+        const result = violations.filter(
+            (v) => statusFilter === 'all' || v.status === statusFilter,
+        );
+        const sorted = [...result];
+        sorted.sort((a, b) => {
+            let cmp = 0;
+            if (vSortKey === 'attacker') cmp = a.attacker.localeCompare(b.attacker);
+            else if (vSortKey === 'strike_number') cmp = a.strike_number - b.strike_number;
+            else if (vSortKey === 'occurred_at') cmp = new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime();
+            else if (vSortKey === 'status') cmp = a.status.localeCompare(b.status);
+            return vSortDir === 'desc' ? -cmp : cmp;
+        });
+        return sorted;
+    }, [violations, statusFilter, vSortKey, vSortDir]);
 
     const pendingCount = violations.filter((v) => v.status === 'pending').length;
 
@@ -402,13 +419,21 @@ export default function SafeZones({ config, violations, mapConfig, hasTiles }: P
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Attacker</TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="attacker" label="Attacker" sortKey={vSortKey} sortDir={vSortDir} onSort={toggleVSort} />
+                                        </TableHead>
                                         <TableHead>Victim</TableHead>
                                         <TableHead>Zone</TableHead>
-                                        <TableHead>Strike #</TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="strike_number" label="Strike #" sortKey={vSortKey} sortDir={vSortDir} onSort={toggleVSort} />
+                                        </TableHead>
                                         <TableHead>Location</TableHead>
-                                        <TableHead>Time</TableHead>
-                                        <TableHead>Status</TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="occurred_at" label="Time" sortKey={vSortKey} sortDir={vSortDir} onSort={toggleVSort} />
+                                        </TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="status" label="Status" sortKey={vSortKey} sortDir={vSortDir} onSort={toggleVSort} />
+                                        </TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>

@@ -14,6 +14,8 @@ import {
     Weight,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { SortableHeader } from '@/components/sortable-header';
+import { useTableSort } from '@/hooks/use-table-sort';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,13 +30,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { fetchAction } from '@/lib/fetch-action';
@@ -121,7 +116,7 @@ const ITEMS_PER_PAGE = 20;
 
 export default function PlayerInventory({ username, inventory, catalog, deliveries }: Props) {
     const [filter, setFilter] = useState('');
-    const [sortBy, setSortBy] = useState<'name' | 'category' | 'condition'>('name');
+    const { sortKey: sortBy, sortDir, toggleSort } = useTableSort<'name' | 'category' | 'condition' | 'totalCount'>('name', 'asc');
     const [page, setPage] = useState(1);
     const [giveOpen, setGiveOpen] = useState(false);
     const [removeTarget, setRemoveTarget] = useState<InventoryItem | null>(null);
@@ -182,15 +177,18 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
                 item.category.toLowerCase().includes(filter.toLowerCase()),
         );
 
-        result.sort((a, b) => {
-            if (sortBy === 'name') return a.name.localeCompare(b.name);
-            if (sortBy === 'category') return a.category.localeCompare(b.category) || a.name.localeCompare(b.name);
-            if (sortBy === 'condition') return (b.condition ?? 0) - (a.condition ?? 0);
-            return 0;
+        const sorted = [...result];
+        sorted.sort((a, b) => {
+            let cmp = 0;
+            if (sortBy === 'name') cmp = a.name.localeCompare(b.name);
+            else if (sortBy === 'category') cmp = a.category.localeCompare(b.category) || a.name.localeCompare(b.name);
+            else if (sortBy === 'condition') cmp = (a.condition ?? 0) - (b.condition ?? 0);
+            else if (sortBy === 'totalCount') cmp = a.totalCount - b.totalCount;
+            return sortDir === 'desc' ? -cmp : cmp;
         });
 
-        return result;
-    }, [stackedItems, filter, sortBy]);
+        return sorted;
+    }, [stackedItems, filter, sortBy, sortDir]);
 
     const categories = useMemo(() => [...new Set(items.map((i) => i.category))], [items]);
     const totalItemCount = useMemo(() => items.reduce((sum, i) => sum + i.count, 0), [items]);
@@ -363,33 +361,14 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
                                             {filteredItems.length} of {stackedItems.length} unique items
                                         </CardDescription>
                                     </div>
-                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                        <div className="relative">
-                                            <Search className="text-muted-foreground absolute left-2.5 top-2.5 size-4" />
-                                            <Input
-                                                placeholder="Filter items..."
-                                                value={filter}
-                                                onChange={(e) => { setFilter(e.target.value); setPage(1); }}
-                                                className="pl-9 sm:w-[200px]"
-                                            />
-                                        </div>
-                                        <Select
-                                            value={sortBy}
-                                            onValueChange={(v) =>
-                                                setSortBy(v as 'name' | 'category' | 'condition')
-                                            }
-                                        >
-                                            <SelectTrigger className="w-full sm:w-[140px]">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="name">Name</SelectItem>
-                                                <SelectItem value="category">Category</SelectItem>
-                                                <SelectItem value="condition">
-                                                    Condition
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                    <div className="relative">
+                                        <Search className="text-muted-foreground absolute left-2.5 top-2.5 size-4" />
+                                        <Input
+                                            placeholder="Filter items..."
+                                            value={filter}
+                                            onChange={(e) => { setFilter(e.target.value); setPage(1); }}
+                                            className="pl-9 sm:w-[200px]"
+                                        />
                                     </div>
                                 </div>
                             </CardHeader>
@@ -400,10 +379,18 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead className="w-[50px]" />
-                                                <TableHead>Item</TableHead>
-                                                <TableHead>Category</TableHead>
-                                                <TableHead className="text-center">Qty</TableHead>
-                                                <TableHead className="w-[120px]">Condition</TableHead>
+                                                <TableHead>
+                                                    <SortableHeader column="name" label="Item" sortKey={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                                                </TableHead>
+                                                <TableHead>
+                                                    <SortableHeader column="category" label="Category" sortKey={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                                                </TableHead>
+                                                <TableHead className="text-center">
+                                                    <SortableHeader column="totalCount" label="Qty" sortKey={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                                                </TableHead>
+                                                <TableHead className="w-[120px]">
+                                                    <SortableHeader column="condition" label="Condition" sortKey={sortBy} sortDir={sortDir} onSort={toggleSort} />
+                                                </TableHead>
                                                 <TableHead>Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>

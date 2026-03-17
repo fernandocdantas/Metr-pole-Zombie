@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\SortsQuery;
 use App\Http\Controllers\Controller;
 use App\Models\ShopPurchase;
 use Illuminate\Http\Request;
@@ -10,14 +11,15 @@ use Inertia\Response;
 
 class ShopPurchaseController extends Controller
 {
+    use SortsQuery;
+
     /**
      * Display all shop purchases for admin management.
      */
     public function index(Request $request): Response
     {
         $query = ShopPurchase::query()
-            ->with(['user', 'purchasable', 'deliveries'])
-            ->orderByDesc('created_at');
+            ->with(['user', 'purchasable', 'deliveries']);
 
         if ($search = $request->query('search')) {
             $query->whereHas('user', fn ($q) => $q->where('username', 'ilike', "%{$search}%"));
@@ -26,6 +28,8 @@ class ShopPurchaseController extends Controller
         if ($status = $request->query('status')) {
             $query->where('delivery_status', $status);
         }
+
+        $sortParams = $this->applySort($query, $request, ['total_price', 'quantity_bought', 'created_at', 'delivery_status']);
 
         $purchases = $query->paginate(25)->withQueryString();
 
@@ -43,6 +47,7 @@ class ShopPurchaseController extends Controller
             'filters' => [
                 'search' => $search ?? '',
                 'status' => $status ?? '',
+                ...$sortParams,
             ],
         ]);
     }

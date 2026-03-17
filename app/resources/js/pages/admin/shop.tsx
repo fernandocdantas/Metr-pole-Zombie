@@ -1,6 +1,8 @@
 import { Head, router } from '@inertiajs/react';
 import { Package, Plus, Search, Tag, ToggleLeft, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { SortableHeader } from '@/components/sortable-header';
+import { useTableSort } from '@/hooks/use-table-sort';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -59,10 +61,15 @@ function ItemIcon({ src, name, size = 32 }: { src: string; name: string; size?: 
     );
 }
 
+type ItemSortKey = 'name' | 'item_type' | 'price' | 'quantity' | 'is_active';
+type CatSortKey = 'name' | 'sort_order' | 'is_active';
+
 export default function ShopAdmin({ categories, items, catalog }: Props) {
     const [tab, setTab] = useState<'items' | 'categories'>('items');
     const [filter, setFilter] = useState('');
     const [itemDialogOpen, setItemDialogOpen] = useState(false);
+    const { sortKey: itemSortKey, sortDir: itemSortDir, toggleSort: toggleItemSort } = useTableSort<ItemSortKey>('name', 'asc');
+    const { sortKey: catSortKey, sortDir: catSortDir, toggleSort: toggleCatSort } = useTableSort<CatSortKey>('sort_order', 'asc');
     const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
     const [editItem, setEditItem] = useState<ShopItem | null>(null);
     const [editCategory, setEditCategory] = useState<ShopCategory | null>(null);
@@ -88,15 +95,28 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
     const [catSortOrder, setCatSortOrder] = useState(0);
 
     const filteredItems = useMemo(() => {
-        if (!filter) return items;
-        const q = filter.toLowerCase();
-        return items.filter(
-            (i) =>
-                i.name.toLowerCase().includes(q) ||
-                i.item_type.toLowerCase().includes(q) ||
-                i.category?.name?.toLowerCase().includes(q),
-        );
-    }, [items, filter]);
+        let result = items;
+        if (filter) {
+            const q = filter.toLowerCase();
+            result = result.filter(
+                (i) =>
+                    i.name.toLowerCase().includes(q) ||
+                    i.item_type.toLowerCase().includes(q) ||
+                    i.category?.name?.toLowerCase().includes(q),
+            );
+        }
+        const sorted = [...result];
+        sorted.sort((a, b) => {
+            let cmp = 0;
+            if (itemSortKey === 'name') cmp = a.name.localeCompare(b.name);
+            else if (itemSortKey === 'item_type') cmp = a.item_type.localeCompare(b.item_type);
+            else if (itemSortKey === 'price') cmp = parseFloat(a.price) - parseFloat(b.price);
+            else if (itemSortKey === 'quantity') cmp = a.quantity - b.quantity;
+            else if (itemSortKey === 'is_active') cmp = Number(a.is_active) - Number(b.is_active);
+            return itemSortDir === 'desc' ? -cmp : cmp;
+        });
+        return sorted;
+    }, [items, filter, itemSortKey, itemSortDir]);
 
     const filteredCatalog = useMemo(() => {
         if (!itemSearch) return catalog.slice(0, 50);
@@ -303,13 +323,23 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead className="w-[40px]" />
-                                            <TableHead>Name</TableHead>
-                                            <TableHead>Type</TableHead>
+                                            <TableHead>
+                                                <SortableHeader column="name" label="Name" sortKey={itemSortKey} sortDir={itemSortDir} onSort={toggleItemSort} />
+                                            </TableHead>
+                                            <TableHead>
+                                                <SortableHeader column="item_type" label="Type" sortKey={itemSortKey} sortDir={itemSortDir} onSort={toggleItemSort} />
+                                            </TableHead>
                                             <TableHead>Category</TableHead>
-                                            <TableHead className="text-right">Price</TableHead>
-                                            <TableHead className="text-center">Qty</TableHead>
+                                            <TableHead className="text-right">
+                                                <SortableHeader column="price" label="Price" sortKey={itemSortKey} sortDir={itemSortDir} onSort={toggleItemSort} />
+                                            </TableHead>
+                                            <TableHead className="text-center">
+                                                <SortableHeader column="quantity" label="Qty" sortKey={itemSortKey} sortDir={itemSortDir} onSort={toggleItemSort} />
+                                            </TableHead>
                                             <TableHead className="text-center">Stock</TableHead>
-                                            <TableHead>Status</TableHead>
+                                            <TableHead>
+                                                <SortableHeader column="is_active" label="Status" sortKey={itemSortKey} sortDir={itemSortDir} onSort={toggleItemSort} />
+                                            </TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -403,16 +433,28 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead className="w-[40px]" />
-                                            <TableHead>Name</TableHead>
+                                            <TableHead>
+                                                <SortableHeader column="name" label="Name" sortKey={catSortKey} sortDir={catSortDir} onSort={toggleCatSort} />
+                                            </TableHead>
                                             <TableHead>Description</TableHead>
                                             <TableHead className="text-center">Items</TableHead>
-                                            <TableHead className="text-center">Sort Order</TableHead>
-                                            <TableHead>Status</TableHead>
+                                            <TableHead className="text-center">
+                                                <SortableHeader column="sort_order" label="Sort Order" sortKey={catSortKey} sortDir={catSortDir} onSort={toggleCatSort} />
+                                            </TableHead>
+                                            <TableHead>
+                                                <SortableHeader column="is_active" label="Status" sortKey={catSortKey} sortDir={catSortDir} onSort={toggleCatSort} />
+                                            </TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {categories.map((cat) => (
+                                        {[...categories].sort((a, b) => {
+                                            let cmp = 0;
+                                            if (catSortKey === 'name') cmp = a.name.localeCompare(b.name);
+                                            else if (catSortKey === 'sort_order') cmp = a.sort_order - b.sort_order;
+                                            else if (catSortKey === 'is_active') cmp = Number(a.is_active) - Number(b.is_active);
+                                            return catSortDir === 'desc' ? -cmp : cmp;
+                                        }).map((cat) => (
                                             <TableRow key={cat.id}>
                                                 <TableCell>
                                                     <Package className="text-muted-foreground size-5" />

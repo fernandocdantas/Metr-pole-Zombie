@@ -1,6 +1,8 @@
 import { Deferred, Head, router } from '@inertiajs/react';
 import { AlertTriangle, Archive, ChevronLeft, ChevronRight, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { SortableHeader } from '@/components/sortable-header';
+import { useServerSort } from '@/hooks/use-server-sort';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,10 +68,22 @@ type BackupsProps = {
     backups: PaginatedBackups;
     current_version: string | null;
     current_branch: string | null;
+    filters: {
+        sort: string;
+        direction: string;
+    };
 };
 
-export default function Backups({ backups, current_version, current_branch }: BackupsProps) {
+type SortKey = 'filename' | 'type' | 'size_bytes' | 'created_at';
+
+export default function Backups({ backups, current_version, current_branch, filters }: BackupsProps) {
     const [showCreate, setShowCreate] = useState(false);
+    const { sortKey, sortDir, toggleSort } = useServerSort<SortKey>({
+        url: '/admin/backups',
+        filters: filters ?? {},
+        defaultSort: 'created_at',
+        defaultDir: 'desc',
+    });
     const [rollbackTarget, setRollbackTarget] = useState<BackupEntry | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<BackupEntry | null>(null);
     const [notes, setNotes] = useState('');
@@ -188,11 +202,16 @@ export default function Backups({ backups, current_version, current_branch }: Ba
         if (backups?.per_page && backups.per_page !== 15) {
             params.per_page = backups.per_page;
         }
+        if (filters?.sort) params.sort = filters.sort;
+        if (filters?.direction) params.direction = filters.direction;
         router.get('/admin/backups', params, { preserveState: true });
     }
 
     function changePerPage(value: string) {
-        router.get('/admin/backups', { per_page: value, page: 1 }, { preserveState: true });
+        const params: Record<string, unknown> = { per_page: value, page: 1 };
+        if (filters?.sort) params.sort = filters.sort;
+        if (filters?.direction) params.direction = filters.direction;
+        router.get('/admin/backups', params, { preserveState: true });
     }
 
     return (
@@ -289,11 +308,19 @@ export default function Backups({ backups, current_version, current_branch }: Ba
                                                     aria-label="Select all"
                                                 />
                                             </TableHead>
-                                            <TableHead>Filename</TableHead>
-                                            <TableHead className="hidden sm:table-cell">Type</TableHead>
+                                            <TableHead>
+                                                <SortableHeader column="filename" label="Filename" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                            </TableHead>
+                                            <TableHead className="hidden sm:table-cell">
+                                                <SortableHeader column="type" label="Type" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                            </TableHead>
                                             <TableHead className="hidden md:table-cell">Version</TableHead>
-                                            <TableHead className="hidden sm:table-cell">Size</TableHead>
-                                            <TableHead className="hidden md:table-cell">Date</TableHead>
+                                            <TableHead className="hidden sm:table-cell">
+                                                <SortableHeader column="size_bytes" label="Size" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                            </TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                <SortableHeader column="created_at" label="Date" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                            </TableHead>
                                             <TableHead className="hidden lg:table-cell">Notes</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>

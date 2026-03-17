@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\SortsQuery;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use Illuminate\Http\Request;
@@ -10,14 +11,18 @@ use Inertia\Response;
 
 class AuditController extends Controller
 {
+    use SortsQuery;
+
     public function index(Request $request): Response
     {
-        $query = AuditLog::query()->latest('created_at');
+        $query = AuditLog::query();
 
         $query->when($request->query('action'), fn ($q, $action) => $q->where('action', $action));
         $query->when($request->query('actor'), fn ($q, $actor) => $q->where('actor', $actor));
         $query->when($request->query('from'), fn ($q, $from) => $q->where('created_at', '>=', $from));
         $query->when($request->query('to'), fn ($q, $to) => $q->where('created_at', '<=', $to));
+
+        $sortParams = $this->applySort($query, $request, ['action', 'actor', 'created_at']);
 
         $logs = $query->paginate(20);
 
@@ -35,6 +40,7 @@ class AuditController extends Controller
                 'actor' => $request->query('actor', ''),
                 'from' => $request->query('from', ''),
                 'to' => $request->query('to', ''),
+                ...$sortParams,
             ],
             'available_actions' => $actions,
         ]);

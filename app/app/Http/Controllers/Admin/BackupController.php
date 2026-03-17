@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\BackupType;
+use App\Http\Controllers\Concerns\SortsQuery;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BackupResource;
 use App\Jobs\CreateBackupJob;
@@ -20,6 +21,8 @@ use Inertia\Response;
 
 class BackupController extends Controller
 {
+    use SortsQuery;
+
     public function __construct(
         private readonly BackupManager $backupManager,
         private readonly AuditLogger $auditLogger,
@@ -29,11 +32,13 @@ class BackupController extends Controller
 
     public function index(Request $request): Response
     {
-        $query = Backup::query()->orderByDesc('created_at');
+        $query = Backup::query();
 
         if ($type = $request->query('type')) {
             $query->where('type', $type);
         }
+
+        $sortParams = $this->applySort($query, $request, ['filename', 'type', 'size_bytes', 'created_at']);
 
         $perPage = min((int) $request->query('per_page', 15), 50);
         $backups = $query->paginate($perPage)->withQueryString()
@@ -43,6 +48,7 @@ class BackupController extends Controller
             'backups' => Inertia::defer(fn () => $backups),
             'current_version' => $this->versionReader->getCachedVersion(),
             'current_branch' => $this->versionReader->getCurrentBranch(),
+            'filters' => $sortParams,
         ]);
     }
 

@@ -1,6 +1,8 @@
 import { Head, router } from '@inertiajs/react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { SortableHeader } from '@/components/sortable-header';
+import { useTableSort } from '@/hooks/use-table-sort';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -45,9 +47,11 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 type BundleItemEntry = { shop_item_id: string; quantity: number };
+type SortKey = 'name' | 'discount_percent' | 'price' | 'is_active';
 
 export default function ShopBundles({ bundles, shopItems }: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
+    const { sortKey, sortDir, toggleSort } = useTableSort<SortKey>('name', 'asc');
     const [editBundle, setEditBundle] = useState<ShopBundle | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -178,16 +182,31 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Name</TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="name" label="Name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
                                         <TableHead>Items</TableHead>
-                                        <TableHead className="text-center">Discount %</TableHead>
-                                        <TableHead className="text-right">Price</TableHead>
-                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-center">
+                                            <SortableHeader column="discount_percent" label="Discount %" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
+                                        <TableHead className="text-right">
+                                            <SortableHeader column="price" label="Price" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="is_active" label="Status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {bundles.map((bundle) => {
+                                    {[...bundles].sort((a, b) => {
+                                        let cmp = 0;
+                                        if (sortKey === 'name') cmp = a.name.localeCompare(b.name);
+                                        else if (sortKey === 'discount_percent') cmp = parseFloat(a.discount_percent ?? '0') - parseFloat(b.discount_percent ?? '0');
+                                        else if (sortKey === 'price') cmp = parseFloat(a.price) - parseFloat(b.price);
+                                        else if (sortKey === 'is_active') cmp = Number(a.is_active) - Number(b.is_active);
+                                        return sortDir === 'desc' ? -cmp : cmp;
+                                    }).map((bundle) => {
                                         const total = getBundleItemsTotal(bundle);
                                         const saving = total - coin(bundle.price);
                                         return (

@@ -21,6 +21,8 @@ class ModerationFilterRequest extends FormRequest
             'player' => ['nullable', 'string', 'max:255'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
+            'sort' => ['nullable', 'string', 'in:created_at,event_type,player'],
+            'direction' => ['nullable', 'string', 'in:asc,desc'],
         ];
     }
 }

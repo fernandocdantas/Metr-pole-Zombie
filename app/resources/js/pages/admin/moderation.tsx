@@ -5,6 +5,7 @@ import type L from 'leaflet';
 import PzMap from '@/components/pz-map';
 import type { EventMarker } from '@/components/pz-map';
 import PlayerActionDialogs from '@/components/player-action-dialogs';
+import { SortableHeader } from '@/components/sortable-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useServerSort } from '@/hooks/use-server-sort';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import type { GameEventEntry, MapConfig } from '@/types/server';
@@ -28,6 +30,8 @@ type Filters = {
     player: string | null;
     from: string | null;
     to: string | null;
+    sort: string;
+    direction: string;
 };
 
 type Props = {
@@ -58,6 +62,8 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Moderation', href: '/admin/moderation' },
 ];
 
+type SortKey = 'created_at' | 'event_type' | 'player';
+
 export default function Moderation({ mapConfig, hasTiles, filters, events }: Props) {
     const [localFilters, setLocalFilters] = useState({
         event_types: filters.event_types || '',
@@ -69,6 +75,13 @@ export default function Moderation({ mapConfig, hasTiles, filters, events }: Pro
     const [kickTarget, setKickTarget] = useState<string | null>(null);
     const [banTarget, setBanTarget] = useState<string | null>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
+
+    const { sortKey, sortDir, toggleSort } = useServerSort<SortKey>({
+        url: '/admin/moderation',
+        filters: filters as unknown as Record<string, string | null | undefined>,
+        defaultSort: 'created_at',
+        defaultDir: 'desc',
+    });
 
     const selectedTypes = localFilters.event_types ? localFilters.event_types.split(',') : [];
 
@@ -85,13 +98,18 @@ export default function Moderation({ mapConfig, hasTiles, filters, events }: Pro
         if (localFilters.player) params.player = localFilters.player;
         if (localFilters.from) params.from = localFilters.from;
         if (localFilters.to) params.to = localFilters.to;
+        if (filters.sort) params.sort = filters.sort;
+        if (filters.direction) params.direction = filters.direction;
 
         router.get('/admin/moderation', params, { preserveState: true });
     }
 
     function clearFilters() {
         setLocalFilters({ event_types: 'pvp_hit,death', player: '', from: '', to: '' });
-        router.get('/admin/moderation', { event_types: 'pvp_hit,death' }, { preserveState: true });
+        const params: Record<string, string> = { event_types: 'pvp_hit,death' };
+        if (filters.sort) params.sort = filters.sort;
+        if (filters.direction) params.direction = filters.direction;
+        router.get('/admin/moderation', params, { preserveState: true });
     }
 
     function panToEvent(event: GameEventEntry) {
@@ -271,9 +289,15 @@ export default function Moderation({ mapConfig, hasTiles, filters, events }: Pro
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Time</TableHead>
-                                            <TableHead>Type</TableHead>
-                                            <TableHead>Player</TableHead>
+                                            <TableHead>
+                                                <SortableHeader column="created_at" label="Time" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                            </TableHead>
+                                            <TableHead>
+                                                <SortableHeader column="event_type" label="Type" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                            </TableHead>
+                                            <TableHead>
+                                                <SortableHeader column="player" label="Player" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                            </TableHead>
                                             <TableHead>Target</TableHead>
                                             <TableHead>Location</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
@@ -355,6 +379,8 @@ export default function Moderation({ mapConfig, hasTiles, filters, events }: Pro
                                                 if (localFilters.player) params.player = localFilters.player;
                                                 if (localFilters.from) params.from = localFilters.from;
                                                 if (localFilters.to) params.to = localFilters.to;
+                                                if (filters.sort) params.sort = filters.sort;
+                                                if (filters.direction) params.direction = filters.direction;
                                                 router.get(
                                                     '/admin/moderation',
                                                     { ...params, page: String(page) },

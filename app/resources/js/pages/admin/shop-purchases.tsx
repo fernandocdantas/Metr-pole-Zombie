@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { Coins, Package, Search, ShoppingBag } from 'lucide-react';
 import { useState } from 'react';
+import { SortableHeader } from '@/components/sortable-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pagination } from '@/components/pagination';
+import { useServerSort } from '@/hooks/use-server-sort';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import type { ShopDelivery, ShopPurchase } from '@/types/server';
@@ -47,6 +49,8 @@ type Props = {
     filters: {
         search: string;
         status: string;
+        sort: string;
+        direction: string;
     };
 };
 
@@ -63,6 +67,8 @@ const statusColors: Record<string, string> = {
     partially_delivered: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
     failed: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
 };
+
+type SortKey = 'total_price' | 'quantity_bought' | 'created_at' | 'delivery_status';
 
 function coin(v: string | number): number {
     return Math.round(typeof v === 'string' ? parseFloat(v) : v);
@@ -93,18 +99,29 @@ function getPurchasableName(purchase: AdminPurchase): string {
 export default function ShopPurchases({ purchases, stats, filters }: Props) {
     const [search, setSearch] = useState(filters.search);
     const [status, setStatus] = useState(filters.status);
+    const { sortKey, sortDir, toggleSort } = useServerSort<SortKey>({
+        url: '/admin/shop/purchases',
+        filters,
+        defaultSort: 'created_at',
+        defaultDir: 'desc',
+    });
 
     function applyFilters() {
         const params: Record<string, string> = {};
         if (search) params.search = search;
         if (status) params.status = status;
+        if (filters.sort) params.sort = filters.sort;
+        if (filters.direction) params.direction = filters.direction;
         router.get('/admin/shop/purchases', params, { preserveState: true });
     }
 
     function clearFilters() {
         setSearch('');
         setStatus('');
-        router.get('/admin/shop/purchases', {}, { preserveState: true });
+        const params: Record<string, string> = {};
+        if (filters.sort) params.sort = filters.sort;
+        if (filters.direction) params.direction = filters.direction;
+        router.get('/admin/shop/purchases', params, { preserveState: true });
     }
 
     return (
@@ -195,11 +212,19 @@ export default function ShopPurchases({ purchases, stats, filters }: Props) {
                                     <TableRow>
                                         <TableHead>Player</TableHead>
                                         <TableHead>Item</TableHead>
-                                        <TableHead className="text-center">Qty</TableHead>
-                                        <TableHead className="text-right">Price</TableHead>
+                                        <TableHead className="text-center">
+                                            <SortableHeader column="quantity_bought" label="Qty" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
+                                        <TableHead className="text-right">
+                                            <SortableHeader column="total_price" label="Price" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
                                         <TableHead className="text-right">Discount</TableHead>
-                                        <TableHead>Delivery Status</TableHead>
-                                        <TableHead>Date</TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="delivery_status" label="Delivery Status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="created_at" label="Date" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>

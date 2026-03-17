@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { Coins, MoreHorizontal, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { SortableHeader } from '@/components/sortable-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { useTableSort } from '@/hooks/use-table-sort';
 import AppLayout from '@/layouts/app-layout';
 import { fetchAction } from '@/lib/fetch-action';
 import type { BreadcrumbItem } from '@/types';
@@ -41,6 +43,8 @@ function coin(v: string | number): number {
     return Math.round(typeof v === 'string' ? parseFloat(v) : v);
 }
 
+type SortKey = 'username' | 'balance' | 'total_earned' | 'total_spent';
+
 export default function Wallets({ users }: Props) {
     const [filter, setFilter] = useState('');
     const [creditOpen, setCreditOpen] = useState(false);
@@ -54,14 +58,32 @@ export default function Wallets({ users }: Props) {
     const [resetOpen, setResetOpen] = useState(false);
     const [resetUser, setResetUser] = useState<WalletUser | null>(null);
     const [resetLoading, setResetLoading] = useState(false);
+    const { sortKey, sortDir, toggleSort } = useTableSort<SortKey>('username', 'asc');
 
     const filteredUsers = useMemo(() => {
-        if (!filter) return users;
-        const q = filter.toLowerCase();
-        return users.filter(
-            (u) => u.username.toLowerCase().includes(q) || u.name?.toLowerCase().includes(q),
-        );
-    }, [users, filter]);
+        let result = users;
+        if (filter) {
+            const q = filter.toLowerCase();
+            result = result.filter(
+                (u) => u.username.toLowerCase().includes(q) || u.name?.toLowerCase().includes(q),
+            );
+        }
+        const sorted = [...result];
+        sorted.sort((a, b) => {
+            let cmp = 0;
+            if (sortKey === 'username') {
+                cmp = a.username.localeCompare(b.username);
+            } else if (sortKey === 'balance') {
+                cmp = a.balance - b.balance;
+            } else if (sortKey === 'total_earned') {
+                cmp = a.total_earned - b.total_earned;
+            } else if (sortKey === 'total_spent') {
+                cmp = a.total_spent - b.total_spent;
+            }
+            return sortDir === 'desc' ? -cmp : cmp;
+        });
+        return sorted;
+    }, [users, filter, sortKey, sortDir]);
 
     const totalBalance = useMemo(() => users.reduce((sum, u) => sum + u.balance, 0), [users]);
 
@@ -184,10 +206,18 @@ export default function Wallets({ users }: Props) {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Username</TableHead>
-                                        <TableHead className="text-right">Balance</TableHead>
-                                        <TableHead className="text-right">Total Earned</TableHead>
-                                        <TableHead className="text-right">Total Spent</TableHead>
+                                        <TableHead>
+                                            <SortableHeader column="username" label="Username" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
+                                        <TableHead className="text-right">
+                                            <SortableHeader column="balance" label="Balance" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
+                                        <TableHead className="text-right">
+                                            <SortableHeader column="total_earned" label="Total Earned" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
+                                        <TableHead className="text-right">
+                                            <SortableHeader column="total_spent" label="Total Spent" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                        </TableHead>
                                         <TableHead className="w-[60px]" />
                                     </TableRow>
                                 </TableHeader>

@@ -1,6 +1,7 @@
 import { Deferred, Head, router } from '@inertiajs/react';
 import { ChevronDown, ChevronRight, Filter, ScrollText } from 'lucide-react';
 import { Fragment, useState } from 'react';
+import { SortableHeader } from '@/components/sortable-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useServerSort } from '@/hooks/use-server-sort';
 import AppLayout from '@/layouts/app-layout';
 import type { AuditEntry, BreadcrumbItem } from '@/types';
 
@@ -30,12 +32,16 @@ type Filters = {
     actor: string;
     from: string;
     to: string;
+    sort: string;
+    direction: string;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
     { title: 'Audit Log', href: '/admin/audit' },
 ];
+
+type SortKey = 'action' | 'actor' | 'created_at';
 
 export default function Audit({
     logs,
@@ -48,6 +54,12 @@ export default function Audit({
 }) {
     const [localFilters, setLocalFilters] = useState(filters);
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const { sortKey, sortDir, toggleSort } = useServerSort<SortKey>({
+        url: '/admin/audit',
+        filters,
+        defaultSort: 'created_at',
+        defaultDir: 'desc',
+    });
 
     function applyFilters() {
         const params: Record<string, string> = {};
@@ -55,13 +67,18 @@ export default function Audit({
         if (localFilters.actor) params.actor = localFilters.actor;
         if (localFilters.from) params.from = localFilters.from;
         if (localFilters.to) params.to = localFilters.to;
+        if (filters.sort) params.sort = filters.sort;
+        if (filters.direction) params.direction = filters.direction;
 
         router.get('/admin/audit', params, { preserveState: true });
     }
 
     function clearFilters() {
-        setLocalFilters({ action: '', actor: '', from: '', to: '' });
-        router.get('/admin/audit', {}, { preserveState: true });
+        setLocalFilters({ action: '', actor: '', from: '', to: '', sort: filters.sort, direction: filters.direction });
+        const params: Record<string, string> = {};
+        if (filters.sort) params.sort = filters.sort;
+        if (filters.direction) params.direction = filters.direction;
+        router.get('/admin/audit', params, { preserveState: true });
     }
 
     return (
@@ -174,10 +191,16 @@ export default function Audit({
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Action</TableHead>
+                                            <TableHead>
+                                                <SortableHeader column="action" label="Action" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                            </TableHead>
                                             <TableHead>Target</TableHead>
-                                            <TableHead className="hidden sm:table-cell">Actor</TableHead>
-                                            <TableHead>Date</TableHead>
+                                            <TableHead className="hidden sm:table-cell">
+                                                <SortableHeader column="actor" label="Actor" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                            </TableHead>
+                                            <TableHead>
+                                                <SortableHeader column="created_at" label="Date" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                            </TableHead>
                                             <TableHead className="hidden md:table-cell">IP</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -245,13 +268,10 @@ export default function Audit({
                                             key={page}
                                             variant={page === logs.current_page ? 'default' : 'outline'}
                                             size="sm"
-                                            onClick={() =>
-                                                router.get(
-                                                    '/admin/audit',
-                                                    { ...localFilters, page },
-                                                    { preserveState: true },
-                                                )
-                                            }
+                                            onClick={() => {
+                                                const params: Record<string, string | number> = { ...localFilters, page };
+                                                router.get('/admin/audit', params, { preserveState: true });
+                                            }}
                                         >
                                             {page}
                                         </Button>
