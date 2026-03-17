@@ -120,7 +120,7 @@ export default function Welcome({
                 {/* Hero */}
                 <section className="relative overflow-hidden py-20 lg:py-28">
                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
-                    <div className="relative mx-auto max-w-5xl px-4 text-center">
+                    <div className="relative mx-auto max-w-7xl px-4 text-center">
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -239,7 +239,7 @@ export default function Welcome({
                 {/* Live Stats Bar */}
                 <Deferred data="server_stats" fallback={
                     <section className="border-y border-border/40 bg-muted/20 py-8">
-                        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-4 px-4 sm:grid-cols-4">
+                        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 px-4 sm:grid-cols-4">
                             {Array.from({ length: 4 }).map((_, i) => (
                                 <div key={i} className="flex flex-col items-center gap-2">
                                     <Skeleton className="size-8 rounded" />
@@ -252,7 +252,7 @@ export default function Welcome({
                 }>
                     {server_stats && (
                         <section className="border-y border-border/40 bg-muted/20 py-8">
-                            <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 px-4 sm:grid-cols-4 lg:grid-cols-5">
+                            <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 sm:grid-cols-4 lg:grid-cols-5">
                                 <div className="flex flex-col items-center gap-1">
                                     <div className="flex size-10 items-center justify-center rounded-lg bg-blue-500/10">
                                         <Users className="size-5 text-blue-500" />
@@ -306,7 +306,7 @@ export default function Welcome({
                 {/* Top Players Spotlight */}
                 <Deferred data="top_players" fallback={
                     <section className="py-16">
-                        <div className="mx-auto max-w-5xl px-4 text-center">
+                        <div className="mx-auto max-w-7xl px-4 text-center">
                             <Skeleton className="mx-auto mb-8 h-8 w-48" />
                             <div className="flex items-end justify-center gap-2 sm:gap-4">
                                 {Array.from({ length: 3 }).map((_, i) => (
@@ -318,7 +318,7 @@ export default function Welcome({
                 }>
                     {top_players && top_players.length > 0 && (
                         <section className="py-16">
-                            <div className="mx-auto max-w-5xl px-4">
+                            <div className="mx-auto max-w-7xl px-4">
                                 <div className="mb-10 text-center">
                                     <h2 className="mb-2 text-2xl font-bold tracking-tight sm:text-3xl">
                                         Top Survivors
@@ -430,7 +430,7 @@ export default function Welcome({
 
                 {/* Features Grid */}
                 <section className="border-t border-border/40 bg-muted/30 py-16 lg:py-20">
-                    <div className="mx-auto max-w-5xl px-4">
+                    <div className="mx-auto max-w-7xl px-4">
                         <div className="mb-12 text-center">
                             <h2 className="mb-3 text-2xl font-bold tracking-tight sm:text-3xl">
                                 Server Management Features

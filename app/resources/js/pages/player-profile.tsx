@@ -65,7 +65,7 @@ export default function PlayerProfile({ player, recent_events, is_admin }: Playe
         <>
             <Head title={`${player.username} — Player Profile`} />
             <PublicLayout>
-                <main className="mx-auto max-w-5xl px-4 py-8">
+                <main className="mx-auto max-w-7xl px-4 py-8">
                     <div className="mb-4">
                         <Link
                             href="/rankings"

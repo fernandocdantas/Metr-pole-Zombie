@@ -75,7 +75,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
     return (
         <div className="min-h-screen bg-background">
             <header className="sticky top-0 z-50 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+                <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
                     <Link href="/" className="flex items-center gap-2">
                         <Skull className="size-6" />
                         <span className="text-lg font-semibold tracking-tight">Zomboid Manager</span>
@@ -118,7 +118,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
             {children}
 
             <footer className="border-t border-border/40 py-8">
-                <div className="mx-auto max-w-5xl px-4 text-center text-sm text-muted-foreground">
+                <div className="mx-auto max-w-7xl px-4 text-center text-sm text-muted-foreground">
                     Powered by Zomboid Manager
                 </div>
             </footer>

@@ -251,7 +251,7 @@ export default function Rankings({
         <>
             <Head title="Rankings" />
             <PublicLayout>
-                <main className="mx-auto max-w-5xl px-4 py-8">
+                <main className="mx-auto max-w-7xl px-4 py-8">
                     <h1 className="mb-6 text-3xl font-bold tracking-tight">Rankings</h1>
 
                     {/* Server Stats Hero */}

@@ -21,7 +21,7 @@ export default function Status({
             <Head title={`${server_name} — Server Status`} />
             <PublicLayout>
                 {/* Content */}
-                <main className="mx-auto max-w-5xl px-4 py-8">
+                <main className="mx-auto max-w-7xl px-4 py-8">
                     {/* Server Status Hero */}
                     <div className="mb-8 text-center">
                         <h1 className="mb-2 text-3xl font-bold tracking-tight">{server_name}</h1>
