@@ -863,4 +863,4 @@ Built for the Georgian Project Zomboid community
 The game server containers powering this project are built and maintained by the community:
 
 - **AMD64:** [renegademaster/zomboid-dedicated-server](https://github.com/renegademaster/zomboid-dedicated-server) by [@renegademaster](https://github.com/renegademaster)
-- - **ARM64:** [joyfui/project-zomboid-server-docker-arm64](https://github.com/joyfui/project-zomboid-server-docker-arm64) by [@joyfui](https://github.com/joyfui)
+- **ARM64:** [joyfui/project-zomboid-server-docker-arm64](https://github.com/joyfui/project-zomboid-server-docker-arm64) by [@joyfui](https://github.com/joyfui)
