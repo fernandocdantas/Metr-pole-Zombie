@@ -14,7 +14,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 
-[Features](#features) · [Quick Start](#quick-start) · [Screenshots](#screenshots) · [API Reference](#rest-api-reference) · [Architecture](#architecture)
+[Features](#features) · [Quick Start](#quick-start) · [Screenshots](#screenshots) · [API Reference](#rest-api-reference) · [Architecture](#architecture) · [Security](#security)
 
 </div>
 
@@ -838,15 +838,73 @@ make up
 make nuke        # Requires typing NUKE_ALL
 ```
 
-## Security Notes
+## Security
 
-- RCON port (27015/tcp) is never exposed to the host — only accessible on the internal Docker network between containers
-- The `backend-net` network is marked `internal: true` — PostgreSQL and Redis are unreachable from outside Docker
-- API endpoints require an `X-API-Key` header; the key is auto-generated with 48 characters of entropy
-- All admin actions are recorded in the audit log with user, IP, and full request payload
-- Two-factor authentication available via TOTP with recovery codes
-- PZ passwords are hashed as `bcrypt(md5(password))` with a fixed salt — the app handles this separately from Laravel's auth system
-- Destructive operations (wipe, nuke, db-reset) require explicit confirmation strings
+### Network Isolation
+
+- **RCON port** (27015/tcp) is never exposed to the host — only accessible on the internal Docker network between containers
+- **`backend-net`** is marked `internal: true` — PostgreSQL and Redis are unreachable from outside Docker
+- **Docker socket proxy** restricts Docker API access to containers, logs, and start/stop only — blocks all other endpoints (image pull, exec, volume mount, etc.)
+- **Caddy reverse proxy** available for auto-TLS termination with HTTP→HTTPS redirect
+- **Trusted proxies** restricted to RFC 1918 private ranges (`127.0.0.1`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`) to prevent header spoofing
+
+### Authentication & Access Control
+
+- **Web auth** — Laravel Fortify with session-based login
+- **Two-factor authentication** — TOTP with QR code setup, manual key entry, and recovery codes
+- **API auth** — `X-API-Key` header with 48 characters of entropy (auto-generated)
+- **Token auth** — Laravel Sanctum for token-based API access
+- **Role-based access** — Admin middleware protects all management routes
+- **PZ passwords** — Hashed as `bcrypt(md5(password))` with a fixed salt, handled separately from Laravel's auth system
+
+### HTTP Security Headers
+
+- **Content Security Policy** — Nonce-based `script-src` generated per request via Vite; restricts `object-src`, `frame-ancestors`, `form-action`, and `base-uri` to `'self'`
+- **X-Frame-Options:** `DENY` (clickjacking protection)
+- **X-Content-Type-Options:** `nosniff` (MIME sniffing prevention)
+- **Referrer-Policy:** `strict-origin-when-cross-origin`
+- **Permissions-Policy:** Disables camera, microphone, and geolocation
+- **HSTS:** `max-age=31536000; includeSubDomains` at the Nginx layer
+
+### Input Validation & Injection Prevention
+
+- **RCON injection prevention** — All RCON arguments are sanitized through `RconSanitizer` with per-type validation: player names (`[a-zA-Z0-9_]{1,50}`), item IDs (`[a-zA-Z0-9_.]{1,100}`), skills (alphanumeric), access levels (whitelist of 6 values), and messages (no `"`, `\n`, `\r` to prevent command boundary breakage)
+- **Config injection prevention** — `SafeConfigValue` rule uses an allowlist-based pattern, rejects Lua concatenation operators (`..`), and blocks newline injection in INI files
+- **Form Request validation** — All admin controller methods use dedicated Form Request classes with `RconSafeIdentifier` and `RconSafeMessage` rules; no inline `$request->validate()`
+- **Route parameter patterns** — `name` and `username` parameters enforce `[a-zA-Z0-9_]{1,50}` at the routing layer via `AppServiceProvider`
+
+### Rate Limiting
+
+Three tiers of rate limiting protect against abuse:
+
+| Tier | Limit | Applies To |
+|---|---|---|
+| `admin` | 60/min | General admin actions |
+| `admin-sensitive` | 10/min | Kick, ban, RCON, server control, password changes |
+| `admin-destructive` | 2/min | Server wipe |
+| `api` (authenticated) | 60/min | API key requests |
+| `api` (anonymous) | 15/min | Unauthenticated API requests |
+
+Sensitive operations stack both `admin` and `admin-sensitive` limiters for an effective 10/min cap.
+
+### Audit & Compliance
+
+- Every admin action is recorded with timestamp, user, action type, IP address, and full request payload
+- **Immutable audit trail** — Audit log deletion is blocked at the model layer (`AuditLogObserver` throws `RuntimeException`)
+- **Sensitive field filtering** — Passwords, API keys, tokens, secrets, and 2FA codes are stripped from audit log payloads automatically
+- Discord webhook notifications on audit log creation (optional)
+
+### Backup Security
+
+- **Tar slip protection** — Archive contents are validated before extraction; rejects entries with `..` path traversal or absolute paths
+- **`--no-absolute-names`** flag as a secondary safeguard during tar extraction
+
+### Infrastructure
+
+- **Entrypoint validation** — Container startup fails fast if `DB_PASSWORD`, `PZ_RCON_PASSWORD`, `ADMIN_PASSWORD`, or `PZ_ADMIN_PASSWORD` are empty
+- **Destructive operations** (wipe, nuke, db-reset) require explicit confirmation strings
+- **Health endpoint split** — `/api/health` is public (status only), `/api/health/detailed` requires API key (returns internal service details)
+- **No `.env` comments** — Environment files omit inline comments to prevent PZ server parsing issues
 
 ---
 
