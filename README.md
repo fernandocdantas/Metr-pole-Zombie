@@ -28,7 +28,7 @@ Zomboid Manager wraps a Dockerized Project Zomboid dedicated server with a Larav
 - **Docker Engine API** — Container lifecycle control (start, stop, restart, update) via the Docker socket
 - **File I/O** — Direct read/write access to PZ config files (`server.ini`, sandbox Lua) mounted from the game server volume
 
-20+ admin pages, a public status page, player portal, item shop, 30+ API endpoints, Discord notifications, an interactive player map, inventory management, safe zones, and more — all from a browser.
+19 admin pages, a public status page, player portal, item shop, 40+ API endpoints, Discord notifications, an interactive player map, inventory management, safe zones, and more — all from a browser.
 
 ## Feature Status
 
@@ -345,49 +345,63 @@ Schedule daily restart times with timezone support, configurable in-game countdo
 
 ## Architecture
 
-Five Docker services across two networks:
+Seven Docker services across two networks:
 
 ```
-                        Internet
-                           │
-              ┌────────────┼────────────────────────────────────┐
-              │            │                                    │
-              │   UDP 16261-16262          TCP 8000              │
-              │            │                  │                  │
-              │   ┌────────▼────────┐  ┌──────▼──────────────┐  │
-              │   │  game-server    │  │  app                │  │Renegade-Master
-  zomboid-net │   │  PZ Dedicated   │◄─│  Laravel + Nginx    │  │
-   (bridge)   │   │  SteamCMD       │  │  React dashboard    │  │
-              │   │                 │  │  Docker socket      │  │
-              │   │  RCON 27015 ◄───│──│  (container ctrl)   │  │
-              │   └─────────────────┘  └──────┬──────────────┘  │
-              │                               │                 │
-              │                        ┌──────▼──────────────┐  │
-              │                        │  queue              │  │
-              │                        │  Backup jobs        │  │
-              │                        │  Restart jobs       │  │
-              │                        │  Scheduled tasks    │  │
-              │                        └──────┬──────────────┘  │
-              └───────────────────────────────┼─────────────────┘
+                          Internet
+                             │
+                ┌────────────┼──────────────────────────────────────┐
+                │            │                                      │
+                │  UDP 16261-16262        TCP 80/443                │
+                │            │               │                      │
+                │  ┌─────────▼────────┐  ┌───▼──────────────────┐   │
+                │  │  game-server     │  │  caddy               │   │
+  zomboid-net   │  │  PZ Dedicated    │  │  Reverse proxy       │   │
+   (bridge)     │  │  SteamCMD        │  │  Auto-TLS            │   │
+                │  │                  │  └───┬──────────────────┘   │
+                │  │  RCON 27015 ◄────│──┐   │                      │
+                │  └──────────────────┘  │ ┌─▼──────────────────┐   │
+                │                        │ │  app               │   │
+                │                        └─│  Laravel + Nginx   │   │
+                │                          │  React dashboard   │   │
+                │                          └──┬─────────────────┘   │
+                │                             │                     │
+                │                       ┌─────▼─────────────────┐   │
+                │                       │  queue                │   │
+                │                       │  Backup jobs          │   │
+                │                       │  Restart jobs         │   │
+                │                       │  Scheduled tasks      │   │
+                │                       └─────┬─────────────────┘   │
+                └─────────────────────────────┼─────────────────────┘
                                               │
-              ┌───────────────────────────────┼─────────────────┐
-              │                               │                 │
-  backend-net │   ┌──────────────┐     ┌──────▼──────┐          │
-  (internal)  │   │  db           │     │  redis      │          │
-              │   │  PostgreSQL 16│     │  Queue      │          │
-              │   │  App data     │     │  Cache      │          │
-              │   └──────────────┘     │  Sessions   │          │
-              │                        └─────────────┘          │
-              └─────────────────────────────────────────────────┘
+                ┌─────────────────────────────┼─────────────────────┐
+                │                             │                     │
+  backend-net   │  ┌──────────────┐    ┌──────▼──────┐              │
+  (internal)    │  │  db          │    │  redis      │              │
+                │  │  PgSQL 16    │    │  Queue      │              │
+                │  │  App data    │    │  Cache      │              │
+                │  └──────────────┘    │  Sessions   │              │
+                │                      └─────────────┘              │
+                │                                                   │
+                │        ┌──────────────────────────────────────┐   │
+                │        │  docker-socket-proxy                 │   │
+                │        │  Tecnativa — restricted Docker API   │   │
+                │        │  (containers, logs, start/stop only) │   │
+                │        └──────────────────────────────────────┘   │
+                └───────────────────────────────────────────────────┘
 
-Volumes: pz-data, pz-server-files, pz-backups, pz-lua-bridge, pz-map-tiles, pz-postgres, pz-redis
+Volumes: pz-data, pz-server-files, pz-backups, pz-lua-bridge, pz-map-tiles,
+         pz-postgres (external), pz-redis, pz-app-vendor, pz-app-node-modules,
+         pz-app-build, pz-caddy-data, pz-caddy-config
 ```
 
 - **game-server** — PZ dedicated server via SteamCMD. Auto-detects ARM64/AMD64 and selects the correct image.
-- **app** — Laravel 12 + React web panel. Mounts the Docker socket for container lifecycle control and PZ data volumes for config/save file access.
+- **app** — Laravel 12 + React web panel. Controls the game server container via the Docker socket proxy and accesses PZ data volumes for config/save files.
 - **queue** — Background job worker for backups, scheduled restarts, server updates, and other long-running tasks.
 - **db** — PostgreSQL 16. Users, backups, audit logs, PvP violations, settings.
 - **redis** — Job queue, cache, sessions, rate limiting.
+- **docker-socket-proxy** — Tecnativa proxy restricting Docker API access to container inspect, start/stop, and log endpoints. Prevents dangerous operations (exec, image pull, volume mount).
+- **caddy** — Reverse proxy with automatic TLS via Let's Encrypt. Terminates HTTPS and forwards to the app container. Optional for development — the app is also accessible directly on port 8000.
 
 ## Quick Start
 
@@ -698,7 +712,10 @@ Authenticated via `X-API-Key` header. The key is auto-generated in `.env` during
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | `GET` | `/api/audit` | Yes | Audit log entries |
-| `GET` | `/api/health` | No | App health check |
+| `GET` | `/api/health` | No | App health check (status only) |
+| `GET` | `/api/health/detailed` | Yes | Detailed health check (RCON, DB, Redis status) |
+
+> **Note:** Features added in Stages 4–6 (item shop, wallets, safe zones, Discord webhooks, auto restart, rankings, respawn delay, moderation) are managed through the web dashboard only and do not have REST API equivalents.
 
 ## Commands
 
@@ -747,30 +764,37 @@ Authenticated via `X-API-Key` header. The key is auto-generated in `.env` during
 Zomboid_Server/
 ├── app/                          # Laravel application
 │   ├── app/
-│   │   ├── Console/Commands/     # Artisan commands (ProcessRespawnKicks, etc.)
+│   │   ├── Console/Commands/     # 12 Artisan commands (stats sync, deliveries, PvP import, etc.)
 │   │   ├── Http/Controllers/
-│   │   │   ├── Admin/            # Web dashboard controllers (13 controllers)
+│   │   │   ├── Admin/            # Web dashboard controllers (22 controllers)
 │   │   │   ├── Api/              # REST API controllers
 │   │   │   └── Settings/         # User settings controllers
-│   │   ├── Jobs/                 # Queue jobs (backups, restarts, server updates)
+│   │   ├── Jobs/                 # 9 queue jobs (backups, restarts, updates, Discord, etc.)
 │   │   ├── Models/               # Eloquent models
-│   │   └── Services/             # Core services
+│   │   └── Services/             # 33 core services
 │   │       ├── RconClient.php        # Source RCON TCP client
 │   │       ├── DockerManager.php     # Docker Engine API client
 │   │       ├── ServerIniParser.php   # server.ini read/write
 │   │       ├── SandboxLuaParser.php  # Sandbox Lua read/write
+│   │       ├── BackupManager.php     # Backup creation + retention
+│   │       ├── WalletService.php     # Player wallet + transactions
+│   │       ├── ShopDeliveryService.php  # Item delivery via RCON/Lua
 │   │       ├── SafeZoneManager.php   # Safe zone CRUD + violations
-│   │       ├── RespawnDelayManager.php
 │   │       ├── DiscordWebhookService.php
-│   │       └── AuditLogger.php
+│   │       └── AuditLogger.php       # + 23 more
 │   ├── resources/js/
-│   │   ├── pages/                # React + Inertia pages (29 total)
-│   │   │   ├── admin/            # 13 admin pages
-│   │   │   ├── auth/             # 7 auth pages
+│   │   ├── pages/                # React + Inertia pages (40 total)
+│   │   │   ├── admin/            # 19 admin pages
+│   │   │   ├── auth/             # 6 auth pages
 │   │   │   ├── settings/         # 4 settings pages
+│   │   │   ├── shop/             # 4 shop pages (browse, item, wallet, purchases)
+│   │   │   ├── welcome.tsx
 │   │   │   ├── dashboard.tsx
 │   │   │   ├── status.tsx
-│   │   │   └── portal.tsx
+│   │   │   ├── rankings.tsx
+│   │   │   ├── portal.tsx
+│   │   │   ├── player-profile.tsx
+│   │   │   └── error.tsx
 │   │   ├── components/           # Reusable UI components (shadcn/ui)
 │   │   └── lib/                  # Utilities (fetchAction, etc.)
 │   ├── routes/
@@ -779,7 +803,11 @@ Zomboid_Server/
 │   │   └── settings.php          # Settings routes
 │   └── tests/                    # Pest PHP tests
 ├── game-server/
-│   └── mods/ZomboidManager/      # Lua bridge mod (safe zones, respawn delay)
+│   └── mods/ZomboidManager/      # Lua bridge mod (14 modules: inventory export,
+│                                 #   item delivery, money deposit, player tracking,
+│                                 #   PvP tracking, safe zones, respawn delay, etc.)
+├── caddy/
+│   └── Caddyfile                 # Reverse proxy config (auto-TLS)
 ├── docker-compose.yml            # Base Docker config
 ├── docker-compose.arm64.yml      # ARM64 game server override
 ├── docker-compose.amd64.yml      # AMD64 game server override
@@ -792,7 +820,9 @@ Zomboid_Server/
 
 | Port | Protocol | Service | Exposure |
 |---|---|---|---|
-| `8000` | TCP | Web panel (Nginx) | Host — configurable via `APP_PORT` |
+| `80` | TCP | Caddy (HTTP) | Host — redirects to HTTPS |
+| `443` | TCP | Caddy (HTTPS) | Host — auto-TLS via Let's Encrypt |
+| `8000` | TCP | Web panel (Nginx) | localhost only — use Caddy for public access |
 | `16261` | UDP | Game server | Host — Steam game traffic |
 | `16262` | UDP | Game server (direct connect) | Host — Steam direct connect |
 | `27015` | TCP | RCON | Internal only — never exposed |
