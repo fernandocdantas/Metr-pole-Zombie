@@ -38,33 +38,33 @@ import type { WelcomePageData } from '@/types';
 const features = [
     {
         icon: Terminal,
-        title: 'RCON Control',
-        description: 'Full server management via RCON — start, stop, restart, broadcast, and execute commands remotely.',
+        title: 'Controle RCON',
+        description: 'Gerenciamento completo do servidor via RCON — inicie, pare, reinicie, transmita e execute comandos remotamente.',
     },
     {
         icon: Users,
-        title: 'Player Management',
-        description: 'Kick, ban, set access levels, teleport players, give items, and manage XP — all from the dashboard.',
+        title: 'Gerenciamento de Jogadores',
+        description: 'Expulse, banir, defina níveis de acesso, teleporte jogadores, distribua itens e gerencie XP — tudo do painel.',
     },
     {
         icon: Wrench,
-        title: 'Config Editor',
-        description: 'Edit server.ini and SandboxVars.lua through a web interface. No SSH required.',
+        title: 'Editor de Configuração',
+        description: 'Edite server.ini e SandboxVars.lua através de uma interface web. Sem necessidade de SSH.',
     },
     {
         icon: Package,
-        title: 'Mod Manager',
-        description: 'Add, remove, and reorder Steam Workshop mods. Keeps WorkshopItems and Mods in sync.',
+        title: 'Gerenciador de Mods',
+        description: 'Adicione, remova e reordene mods do Steam Workshop. Mantém WorkshopItems e Mods sincronizados.',
     },
     {
         icon: Archive,
-        title: 'Backup & Rollback',
-        description: 'Automated scheduled backups with retention policies. One-click rollback to any previous state.',
+        title: 'Backup e Restauração',
+        description: 'Backups agendados automaticamente com políticas de retenção. Restauração com um clique para qualquer estado anterior.',
     },
     {
         icon: Shield,
-        title: 'Whitelist Control',
-        description: 'Manage server access with whitelist CRUD. Add and remove players with sync to PZ database.',
+        title: 'Controle de Lista Branca',
+        description: 'Gerencie o acesso ao servidor com lista branca. Adicione e remova jogadores com sincronização no banco de dados PZ.',
     },
 ];
 
@@ -128,7 +128,7 @@ export default function Welcome({
                             className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-4 py-1.5 text-sm text-muted-foreground"
                         >
                             <Globe className="size-4" />
-                            Georgian Gaming Community
+                            Comunidade de Jogos Georgiana
                         </motion.div>
                         <motion.h1
                             initial={{ opacity: 0, y: 20 }}
@@ -138,7 +138,7 @@ export default function Welcome({
                         >
                             Project Zomboid
                             <br />
-                            <span className="text-muted-foreground">Dedicated Server</span>
+                            <span className="text-muted-foreground">Servidor Dedicado</span>
                         </motion.h1>
 
                         {/* Server status indicator */}
@@ -159,9 +159,9 @@ export default function Welcome({
                             />
                             <span className="font-medium">
                                 {server.status === 'online'
-                                    ? `Online — ${server.player_count} player${server.player_count !== 1 ? 's' : ''}`
+                                    ? `Online — ${server.player_count} jogador${server.player_count !== 1 ? 'es' : ''}`
                                     : server.status === 'starting'
-                                      ? 'Starting up...'
+                                      ? 'Iniciando...'
                                       : 'Offline'}
                             </span>
                             {ping !== null && server.status === 'online' && (
@@ -175,8 +175,8 @@ export default function Welcome({
                             transition={{ duration: 0.5, delay: 0.2 }}
                             className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground"
                         >
-                            A fully managed PZ server with web-based administration.
-                            Mod management, automated backups, player controls, and RCON console — all from your browser.
+                            Um servidor PZ totalmente gerenciado com administração baseada na web.
+                            Gerenciamento de mods, backups automatizados, controles de jogadores e console RCON — tudo do seu navegador.
                         </motion.p>
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
@@ -187,41 +187,41 @@ export default function Welcome({
                             <Dialog>
                                 <DialogTrigger asChild>
                                     <Button size="lg">
-                                        Join Server
+                                        Entrar no Servidor
                                         <ChevronRight className="ml-1 size-4" />
                                     </Button>
                                 </DialogTrigger>
                                 <DialogContent className="sm:max-w-md">
                                     <DialogHeader>
-                                        <DialogTitle>Join Server</DialogTitle>
+                                        <DialogTitle>Entrar no Servidor</DialogTitle>
                                         <DialogDescription>
-                                            Use the connection details below to connect in Project Zomboid.
+                                            Use os detalhes de conexão abaixo para se conectar em Project Zomboid.
                                         </DialogDescription>
                                     </DialogHeader>
                                     <div className="space-y-3 py-2">
                                         {connection.ip ? (
                                             <>
-                                                <CopyField label="Server IP" value={connection.ip} />
-                                                <CopyField label="Port" value={connection.port} />
+                                                <CopyField label="IP do Servidor" value={connection.ip} />
+                                                <CopyField label="Porta" value={connection.port} />
                                             </>
                                         ) : (
                                             <p className="text-sm text-muted-foreground">
-                                                Connection details are not configured yet. Contact the server admin.
+                                                Os detalhes de conexão ainda não foram configurados. Entre em contato com o administrador do servidor.
                                             </p>
                                         )}
                                         <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2.5 text-sm text-muted-foreground">
-                                            <p className="mb-1 font-medium text-foreground">How to connect:</p>
+                                            <p className="mb-1 font-medium text-foreground">Como se conectar:</p>
                                             <ol className="list-inside list-decimal space-y-0.5">
-                                                <li>Open Project Zomboid</li>
-                                                <li>Go to Multiplayer &rarr; Join</li>
-                                                <li>Enter the IP and port above</li>
-                                                <li>Click Connect</li>
+                                                <li>Abra Project Zomboid</li>
+                                                <li>Vá para Multijogador &rarr; Entrar</li>
+                                                <li>Digite o IP e a porta acima</li>
+                                                <li>Clique em Conectar</li>
                                             </ol>
                                         </div>
                                     </div>
                                     <DialogFooter>
                                         <DialogClose asChild>
-                                            <Button variant="outline">Close</Button>
+                                            <Button variant="outline">Fechar</Button>
                                         </DialogClose>
                                     </DialogFooter>
                                 </DialogContent>
@@ -229,7 +229,7 @@ export default function Welcome({
                             <Button asChild variant="outline" size="lg">
                                 <Link href="/rankings">
                                     <Trophy className="mr-1.5 size-4" />
-                                    View Rankings
+                                    Ver Classificação
                                 </Link>
                             </Button>
                         </motion.div>
@@ -260,7 +260,7 @@ export default function Welcome({
                                     <span className="text-2xl font-bold tabular-nums">
                                         <AnimatedCounter value={server_stats.total_players} />
                                     </span>
-                                    <span className="text-xs text-muted-foreground">Total Players</span>
+                                    <span className="text-xs text-muted-foreground">Total de Jogadores</span>
                                 </div>
                                 <div className="flex flex-col items-center gap-1">
                                     <div className="flex size-10 items-center justify-center rounded-lg bg-red-500/10">
@@ -269,7 +269,7 @@ export default function Welcome({
                                     <span className="text-2xl font-bold tabular-nums">
                                         <AnimatedCounter value={server_stats.total_zombie_kills} />
                                     </span>
-                                    <span className="text-xs text-muted-foreground">Zombie Kills</span>
+                                    <span className="text-xs text-muted-foreground">Zumbis Mortos</span>
                                 </div>
                                 <div className="flex flex-col items-center gap-1">
                                     <div className="flex size-10 items-center justify-center rounded-lg bg-green-500/10">
@@ -278,7 +278,7 @@ export default function Welcome({
                                     <span className="text-2xl font-bold tabular-nums">
                                         <AnimatedCounter value={server_stats.total_hours_survived} decimals={1} suffix="h" />
                                     </span>
-                                    <span className="text-xs text-muted-foreground">Hours Survived</span>
+                                    <span className="text-xs text-muted-foreground">Horas Sobrevividas</span>
                                 </div>
                                 <div className="flex flex-col items-center gap-1">
                                     <div className="flex size-10 items-center justify-center rounded-lg bg-orange-500/10">
@@ -287,7 +287,7 @@ export default function Welcome({
                                     <span className="text-2xl font-bold tabular-nums">
                                         <AnimatedCounter value={server_stats.total_deaths} />
                                     </span>
-                                    <span className="text-xs text-muted-foreground">Deaths</span>
+                                    <span className="text-xs text-muted-foreground">Mortes</span>
                                 </div>
                                 <div className="hidden flex-col items-center gap-1 lg:flex">
                                     <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
@@ -296,7 +296,7 @@ export default function Welcome({
                                     <span className="text-2xl font-bold tabular-nums">
                                         {server.player_count}
                                     </span>
-                                    <span className="text-xs text-muted-foreground">Players Online</span>
+                                    <span className="text-xs text-muted-foreground">Jogadores Online</span>
                                 </div>
                             </div>
                         </section>
@@ -321,9 +321,9 @@ export default function Welcome({
                             <div className="mx-auto max-w-7xl px-4">
                                 <div className="mb-10 text-center">
                                     <h2 className="mb-2 text-2xl font-bold tracking-tight sm:text-3xl">
-                                        Top Survivors
+                                        Melhores Sobreviventes
                                     </h2>
-                                    <p className="text-muted-foreground">Leading zombie slayers on the server</p>
+                                    <p className="text-muted-foreground">Principais caçadores de zumbis do servidor</p>
                                 </div>
                                 <div className="flex items-end justify-center gap-2 sm:gap-4">
                                     {/* 2nd place */}
@@ -341,10 +341,10 @@ export default function Welcome({
                                                     </div>
                                                     <p className="truncate text-sm font-semibold">{top_players[1].username}</p>
                                                     <p className="text-xs text-muted-foreground">
-                                                        {top_players[1].zombie_kills.toLocaleString()} kills
+                                                        {top_players[1].zombie_kills.toLocaleString()} mortes
                                                     </p>
                                                     <p className="text-xs text-muted-foreground">
-                                                        {top_players[1].hours_survived.toLocaleString(undefined, { maximumFractionDigits: 1 })}h survived
+                                                        {top_players[1].hours_survived.toLocaleString(undefined, { maximumFractionDigits: 1 })}h sobrevividas
                                                     </p>
                                                     {top_players[1].profession && (
                                                         <span className="mt-1 inline-block rounded bg-muted px-1.5 py-0.5 text-xs">
@@ -370,10 +370,10 @@ export default function Welcome({
                                                 </div>
                                                 <p className="truncate font-semibold">{top_players[0].username}</p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {top_players[0].zombie_kills.toLocaleString()} kills
+                                                    {top_players[0].zombie_kills.toLocaleString()} mortes
                                                 </p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {top_players[0].hours_survived.toLocaleString(undefined, { maximumFractionDigits: 1 })}h survived
+                                                    {top_players[0].hours_survived.toLocaleString(undefined, { maximumFractionDigits: 1 })}h sobrevividas
                                                 </p>
                                                 {top_players[0].profession && (
                                                     <span className="mt-1 inline-block rounded bg-yellow-500/10 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:text-yellow-400">
@@ -399,10 +399,10 @@ export default function Welcome({
                                                     </div>
                                                     <p className="truncate text-sm font-semibold">{top_players[2].username}</p>
                                                     <p className="text-xs text-muted-foreground">
-                                                        {top_players[2].zombie_kills.toLocaleString()} kills
+                                                        {top_players[2].zombie_kills.toLocaleString()} mortes
                                                     </p>
                                                     <p className="text-xs text-muted-foreground">
-                                                        {top_players[2].hours_survived.toLocaleString(undefined, { maximumFractionDigits: 1 })}h survived
+                                                        {top_players[2].hours_survived.toLocaleString(undefined, { maximumFractionDigits: 1 })}h sobrevividas
                                                     </p>
                                                     {top_players[2].profession && (
                                                         <span className="mt-1 inline-block rounded bg-muted px-1.5 py-0.5 text-xs">
@@ -420,7 +420,7 @@ export default function Welcome({
                                         className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
                                     >
                                         <Trophy className="size-4" />
-                                        View Full Rankings
+                                        Ver Classificação Completa
                                     </Link>
                                 </div>
                             </div>
@@ -433,10 +433,10 @@ export default function Welcome({
                     <div className="mx-auto max-w-7xl px-4">
                         <div className="mb-12 text-center">
                             <h2 className="mb-3 text-2xl font-bold tracking-tight sm:text-3xl">
-                                Server Management Features
+                                Recursos de Gerenciamento do Servidor
                             </h2>
                             <p className="text-muted-foreground">
-                                Everything you need to run a PZ server, without SSH access.
+                                Tudo o que você precisa para executar um servidor PZ, sem acesso SSH.
                             </p>
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
