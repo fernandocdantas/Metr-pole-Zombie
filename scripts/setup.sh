@@ -56,6 +56,8 @@ generate_secret() {
     openssl rand -base64 "$1" | tr -dc 'A-Za-z0-9' | head -c "$2"
 }
 
+GENERATE_SELF_SIGNED=false
+
 # ── Detect architecture ──────────────────────────────────────────────────────
 ARCH=$(uname -m)
 if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
@@ -84,11 +86,15 @@ banner
 
 # ── Environment ───────────────────────────────────────────────────────────────
 section "Environment"
-echo "  1) Production  (recommended for real servers)"
-echo "  2) Development (debug mode, Vite dev server)"
-echo -ne "  ${DIM}[1]${NC}: "
-read -r env_choice || true
-env_choice="${env_choice:-1}"
+while true; do
+    echo "  1) Production  (recommended for real servers)"
+    echo "  2) Development (debug mode, Vite dev server)"
+    echo -ne "  ${DIM}[1]${NC}: "
+    read -r env_choice || true
+    env_choice="${env_choice:-1}"
+    [[ "$env_choice" =~ ^[12]$ ]] && break
+    echo -e "  ${RED}Invalid choice. Enter 1 or 2.${NC}"
+done
 
 if [ "$env_choice" = "2" ]; then
     APP_ENV="local"
@@ -131,20 +137,24 @@ prompt PZ_MAX_PLAYERS "Max players" "16"
 prompt PZ_MAX_RAM "Max RAM" "4096m"
 
 echo "  Steam branch:"
-echo "    1) public   — Stable release (recommended)"
-echo "    2) unstable — Latest unstable/experimental"
-echo "    3) Custom   — Enter a branch name manually"
-echo -ne "  ${DIM}[1]${NC}: "
-read -r branch_choice || true
-branch_choice="${branch_choice:-1}"
+while true; do
+    echo "    1) public   — Stable release (recommended)"
+    echo "    2) unstable — Latest unstable/experimental"
+    echo "    3) Custom   — Enter a branch name manually"
+    echo -ne "  ${DIM}[1]${NC}: "
+    read -r branch_choice || true
+    branch_choice="${branch_choice:-1}"
+    [[ "$branch_choice" =~ ^[123]$ ]] && break
+    echo -e "  ${RED}Invalid choice. Enter 1, 2, or 3.${NC}"
+done
 case "$branch_choice" in
+    1) PZ_STEAM_BRANCH="public" ;;
     2) PZ_STEAM_BRANCH="unstable" ;;
     3)
         echo -ne "  Branch name: "
         read -r PZ_STEAM_BRANCH || true
         PZ_STEAM_BRANCH="${PZ_STEAM_BRANCH:-public}"
         ;;
-    *) PZ_STEAM_BRANCH="public" ;;
 esac
 
 prompt PZ_SERVER_PASSWORD "Server password (empty = open)" ""
@@ -152,12 +162,16 @@ prompt PZ_SERVER_PASSWORD "Server password (empty = open)" ""
 # ── Web Panel (HTTPS via Caddy) ───────────────────────────────────────────────
 section "Web Panel (HTTPS)"
 echo "  How will you access the panel?"
-echo "  1) Domain name  (e.g., zomboid.example.com — auto Let's Encrypt)"
-echo "  2) Public IP     (e.g., 203.0.113.50 — self-signed cert)"
-echo "  3) Localhost only (local dev — self-signed cert)"
-echo -ne "  ${DIM}[3]${NC}: "
-read -r access_choice || true
-access_choice="${access_choice:-3}"
+while true; do
+    echo "  1) Domain name  (e.g., zomboid.example.com — auto Let's Encrypt, domain must be pointed to this server already)"
+    echo "  2) Public IP     (e.g., 203.0.113.50 — self-signed cert)"
+    echo "  3) Localhost only (local dev — self-signed cert)"
+    echo -ne "  ${DIM}[3]${NC}: "
+    read -r access_choice || true
+    access_choice="${access_choice:-3}"
+    [[ "$access_choice" =~ ^[123]$ ]] && break
+    echo -e "  ${RED}Invalid choice. Enter 1, 2, or 3.${NC}"
+done
 
 APP_PORT=8000
 CADDY_HTTP_PORT=80
@@ -185,10 +199,11 @@ case "$access_choice" in
             echo -e "  ${RED}Invalid IP address. Try again.${NC}"
         done
         APP_URL="https://${SITE_HOST}"
-        CADDY_SITE="${SITE_HOST}"
-        CADDY_TLS=$'\ttls internal'
+        CADDY_SITE=":443"
+        CADDY_TLS=$'\ttls /etc/caddy/certs/cert.pem /etc/caddy/certs/key.pem'
+        GENERATE_SELF_SIGNED=true
         ;;
-    *)
+    3)
         SITE_HOST="localhost"
         APP_URL="https://localhost"
         CADDY_SITE="localhost"
@@ -230,11 +245,43 @@ APP_SECRET=$(openssl rand -base64 32)
 REDIS_PASS=$(generate_secret 18 20)
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Generate self-signed certificate (IP mode only)
+# ══════════════════════════════════════════════════════════════════════════════
+mkdir -p caddy/certs
+if [ "$GENERATE_SELF_SIGNED" = "true" ]; then
+    echo "Generating self-signed certificate for ${SITE_HOST}..."
+    openssl req -x509 -newkey rsa:2048 \
+        -keyout caddy/certs/key.pem -out caddy/certs/cert.pem \
+        -days 3650 -nodes \
+        -subj "/CN=${SITE_HOST}" \
+        -addext "subjectAltName=IP:${SITE_HOST}" 2>/dev/null
+else
+    # Clean up certs from a previous IP-mode run
+    rm -f caddy/certs/cert.pem caddy/certs/key.pem
+fi
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Generate Caddyfile
 # ══════════════════════════════════════════════════════════════════════════════
 echo "Creating caddy/Caddyfile..."
-mkdir -p caddy
-cat > caddy/Caddyfile <<CADDYEOF
+if [ "$GENERATE_SELF_SIGNED" = "true" ]; then
+    # IP mode: listen on all interfaces, use generated cert, add HTTP→HTTPS redirect
+    cat > caddy/Caddyfile <<CADDYEOF
+{
+	# Managed by setup.sh — edit freely or re-run make init
+}
+
+${CADDY_SITE} {
+${CADDY_TLS}
+	reverse_proxy app:8000
+}
+
+:80 {
+	redir https://{host}{uri} permanent
+}
+CADDYEOF
+else
+    cat > caddy/Caddyfile <<CADDYEOF
 {
 	# Managed by setup.sh — edit freely or re-run make init
 }
@@ -248,6 +295,7 @@ http://${CADDY_SITE} {
 	redir https://${CADDY_SITE}{uri} permanent
 }
 CADDYEOF
+fi
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Generate root .env
@@ -317,11 +365,37 @@ if ! docker volume inspect pz-postgres >/dev/null 2>&1; then
 fi
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Start services
+# Stop existing services (if any) so they pick up new config
 # ══════════════════════════════════════════════════════════════════════════════
 echo ""
 echo -e "${BOLD}Starting services...${NC}"
+make down 2>/dev/null || true
 make up
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Sync passwords into existing volumes (re-run safe)
+# ══════════════════════════════════════════════════════════════════════════════
+# PostgreSQL: volume retains the password from the first initdb — sync it
+echo "Syncing database password..."
+docker exec pz-db psql -U "${DB_USERNAME:-zomboid}" -d "${DB_DATABASE:-zomboid}" \
+    -c "ALTER USER ${DB_USERNAME:-zomboid} PASSWORD '${DB_PASS}';" >/dev/null 2>&1 || true
+
+# Redis: update requirepass to match new password
+echo "Syncing Redis password..."
+if [ -n "$REDIS_PASS" ]; then
+    # Try authenticating with old password first (may fail on first run — that's OK)
+    docker exec pz-redis redis-cli CONFIG SET requirepass "$REDIS_PASS" >/dev/null 2>&1 || \
+    docker exec pz-redis redis-cli -a "$REDIS_PASS" CONFIG SET requirepass "$REDIS_PASS" >/dev/null 2>&1 || true
+fi
+
+# Admin user: update or create via artisan (entrypoint may not have run yet)
+echo "Syncing admin account..."
+for attempt in 1 2 3; do
+    if docker exec pz-app php artisan zomboid:create-admin --no-interaction 2>&1 | grep -qE "created|updated|exists"; then
+        break
+    fi
+    sleep 3
+done
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Done
@@ -342,7 +416,4 @@ echo -e "  ${BOLD}Admin Pass:${NC}    (as entered)"
 fi
 echo ""
 echo -e "  ${BOLD}API Key:${NC}       ${DIM}${API_SECRET}${NC}"
-echo ""
-echo -e "  The admin account will be created automatically when"
-echo -e "  the app container finishes starting (check ${DIM}make logs${NC})."
 echo ""
