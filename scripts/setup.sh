@@ -515,15 +515,38 @@ echo ""
 echo -e "  ${BOLD}API Key:${NC}       ${DIM}${API_SECRET}${NC}"
 echo ""
 
-# Game server status hint — SteamCMD download takes a while on first run
-GS_STATUS=$(docker inspect --format='{{.State.Health.Status}}' pz-game-server 2>/dev/null || echo "unknown")
-if [ "$GS_STATUS" = "healthy" ]; then
-    echo -e "  ${GREEN}Game server: running${NC}"
-elif [ "$GS_STATUS" = "starting" ]; then
-    echo -e "  ${YELLOW}Game server: starting (SteamCMD is downloading ~3 GB, this takes a while)${NC}"
+# Game server status — check if SteamCMD failed and restart if needed
+GS_RUNNING=false
+for gs_attempt in 1 2 3; do
+    # Give the entrypoint time to run SteamCMD (or fail)
+    echo -e "  ${DIM}Checking game server (attempt ${gs_attempt}/3)...${NC}"
+    sleep 10
+
+    # Check if SteamCMD hit a fatal error
+    if docker logs pz-game-server 2>&1 | grep -q "FATAL: SteamCMD failed"; then
+        if [ "$gs_attempt" -lt 3 ]; then
+            echo -e "  ${YELLOW}Game server: SteamCMD failed — restarting container...${NC}"
+            docker restart pz-game-server >/dev/null 2>&1 || true
+        else
+            echo -e "  ${RED}Game server: SteamCMD failed after 3 container restarts.${NC}"
+            echo -e "  ${DIM}  Check logs: docker logs pz-game-server${NC}"
+        fi
+        continue
+    fi
+
+    # Check if it's running or still downloading
+    GS_STATE=$(docker inspect --format='{{.State.Status}}' pz-game-server 2>/dev/null || echo "unknown")
+    if [ "$GS_STATE" = "running" ]; then
+        GS_RUNNING=true
+        break
+    fi
+done
+
+if [ "$GS_RUNNING" = "true" ]; then
+    echo -e "  ${GREEN}Game server: running (SteamCMD download may still be in progress)${NC}"
     echo -e "  ${DIM}  Monitor with: docker logs -f pz-game-server${NC}"
 else
-    echo -e "  ${YELLOW}Game server: ${GS_STATUS}${NC}"
+    echo -e "  ${YELLOW}Game server: not running${NC}"
     echo -e "  ${DIM}  Check logs: docker logs pz-game-server${NC}"
 fi
 echo ""
