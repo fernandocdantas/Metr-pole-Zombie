@@ -50,7 +50,7 @@ down:
 	$(COMPOSE) down
 
 nuke:
-	@echo "WARNING: This will destroy ALL data (database, game saves, backups)."
+	@echo "WARNING: This will destroy ALL data (database, game saves, backups, config)."
 	@echo "Type NUKE_ALL and press Enter to continue:"
 	@read confirm; \
 	if [ "$$confirm" != "NUKE_ALL" ]; then \
@@ -58,7 +58,11 @@ nuke:
 		exit 1; \
 	fi
 	$(COMPOSE) down -v
-	@docker volume rm pz-postgres 2>/dev/null || true
+	@docker volume rm pz-postgres pz-app-vendor pz-app-node-modules pz-app-build \
+		pz-server-files pz-data pz-redis pz-backups pz-lua-bridge pz-map-tiles \
+		pz-caddy-data pz-caddy-config 2>/dev/null || true
+	@rm -f .env app/.env
+	@rm -f caddy/Caddyfile caddy/certs/cert.pem caddy/certs/key.pem
 
 build:
 	$(COMPOSE) build
