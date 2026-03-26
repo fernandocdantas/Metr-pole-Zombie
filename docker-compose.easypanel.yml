@@ -1,6 +1,7 @@
 services:
   game-server:
     image: renegademaster/zomboid-dedicated-server:latest
+    container_name: pz-game-server
     entrypoint: ["/bin/bash", "/home/steam/amd64-entrypoint.sh"]
     restart: unless-stopped
     ports:
